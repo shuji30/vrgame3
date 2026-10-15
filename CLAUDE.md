@@ -6,7 +6,7 @@
 Wii Sports Resort / Switch Sports 系の「誰でもすぐ遊べる」遊びやすさを参考にするが、
 名称・キャラクター・デザインはすべてオリジナルにする。個人で遊ぶための制作で、公開はしない。
 
-- 企画書: https://claude.ai/code/artifact/1f2e899a-71b5-4df6-a188-7a7e8e11f2fd
+- 企画書: `docs/plan.md`
 - 種目の優先順: 1. ボウリング(MVP) → 2. アーチェリー → 3. 卓球
 
 ## 開発環境
