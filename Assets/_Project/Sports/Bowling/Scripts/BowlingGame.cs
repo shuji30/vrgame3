@@ -93,6 +93,12 @@ namespace VRGame3.Sports.Bowling
         private float clearTimer;
         private bool resetRackOnClear;
 
+        /// <summary>投げるボール。</summary>
+        public IReadOnlyList<ThrowableObject> Balls => balls;
+
+        /// <summary>10フレームを投げ終えたか。</summary>
+        public bool IsGameOver => state == State.GameOver;
+
         /// <summary>いまのスコア表。</summary>
         public BowlingScoreSheet Sheet => sheet;
 

@@ -158,6 +158,15 @@ namespace VRGame3.Sports.Bowling.EditorTools
             List<string> warnings = SceneBuildUtility.SetUpXROrigin(arc, palette.Reticle, PlayerPosition, Quaternion.identity,
                 requireTeleportArea: true);
 
+            // 身長と利き手に合わせて動かす置き台と、投げ始める前の「はじめに」パネル
+            BowlingRack rack = SetUpRack(root.transform, balls, scoreBoard.transform.Find("小型スコア板"));
+            string panelWarning = BowlingStartPanelBuilder.AddStartPanel(root, game, rack, new Vector3(0f, 1.3f, -1.95f),
+                PlayerPosition + new Vector3(0f, 1.6f, 0f));
+            if (panelWarning != null)
+            {
+                warnings.Add(panelWarning);
+            }
+
             EditorSceneManager.SaveScene(scene, ScenePath);
             SceneBuildUtility.AddSceneToBuildSettings(ScenePath);
 
@@ -491,6 +500,48 @@ namespace VRGame3.Sports.Bowling.EditorTools
             }
 
             return balls;
+        }
+
+        /// <summary>
+        /// ボール置き台に BowlingRack を付ける。設定に合わせて動かすので、置き台と小型スコア板は Static にしない。
+        /// </summary>
+        private static BowlingRack SetUpRack(Transform root, List<ThrowableObject> balls, Transform smallScoreBoard)
+        {
+            Transform rackTransform = root.Find("ボール置き台");
+            SetStaticRecursively(rackTransform, false);
+            if (smallScoreBoard != null)
+            {
+                SetStaticRecursively(smallScoreBoard, false);
+            }
+
+            var rack = rackTransform.gameObject.AddComponent<BowlingRack>();
+            var so = new SerializedObject(rack);
+            so.FindProperty("table").objectReferenceValue = rackTransform.Find("台");
+            SerializedProperty rails = so.FindProperty("rails");
+            rails.arraySize = 2;
+            rails.GetArrayElementAtIndex(0).objectReferenceValue = rackTransform.Find("レール(左)");
+            rails.GetArrayElementAtIndex(1).objectReferenceValue = rackTransform.Find("レール(右)");
+            SerializedProperty ballList = so.FindProperty("balls");
+            ballList.arraySize = balls.Count;
+            for (int i = 0; i < balls.Count; i++)
+            {
+                ballList.GetArrayElementAtIndex(i).objectReferenceValue = balls[i];
+            }
+
+            so.FindProperty("smallScoreBoard").objectReferenceValue = smallScoreBoard;
+            so.FindProperty("rightHandX").floatValue = RackPosition.x;
+            so.FindProperty("leftHandX").floatValue = -RackPosition.x;
+            so.FindProperty("ballDiameter").floatValue = BallDiameter;
+            so.ApplyModifiedPropertiesWithoutUndo();
+            return rack;
+        }
+
+        private static void SetStaticRecursively(Transform target, bool isStatic)
+        {
+            foreach (Transform t in target.GetComponentsInChildren<Transform>(true))
+            {
+                t.gameObject.isStatic = isStatic;
+            }
         }
 
         /// <summary>

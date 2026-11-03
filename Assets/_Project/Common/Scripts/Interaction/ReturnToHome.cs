@@ -92,6 +92,17 @@ namespace VRGame3.Common
         }
 
         /// <summary>
+        /// いまの位置と向きを「元の位置」として覚え直す。置き台を動かしたあとなどに呼ぶ。
+        /// </summary>
+        public void RecaptureHome()
+        {
+            homePosition = transform.position;
+            homeRotation = transform.rotation;
+            stoppedTime = 0f;
+            awayTime = 0f;
+        }
+
+        /// <summary>
         /// すぐに元の位置へ戻す。Inspector の右上メニュー(⋮)からも呼べる。
         /// </summary>
         [ContextMenu("元の位置に戻す")]
