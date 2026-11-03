@@ -64,6 +64,9 @@ namespace VRGame3.Sports.Bowling
             {
                 game.GameFinished += OnGameFinished;
             }
+
+            // メニューの設定パネルで身長・利き手を変えたときも、表示とボール置き台に反映する
+            SaveStore.Changed += OnSaveChanged;
         }
 
         private void OnDisable()
@@ -72,6 +75,13 @@ namespace VRGame3.Sports.Bowling
             {
                 game.GameFinished -= OnGameFinished;
             }
+
+            SaveStore.Changed -= OnSaveChanged;
+        }
+
+        private void OnSaveChanged()
+        {
+            ApplySettings(false);
         }
 
         private void Start()

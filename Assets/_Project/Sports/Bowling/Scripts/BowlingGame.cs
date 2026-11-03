@@ -162,6 +162,7 @@ namespace VRGame3.Sports.Bowling
             pinSetter.ResetRack();
             state = State.Ready;
             currentBall = null;
+            GameSession.InProgress = false;
             scoreBoard.Refresh(sheet);
         }
 
@@ -189,13 +190,15 @@ namespace VRGame3.Sports.Bowling
             }
 
             bool waiting = state == State.Ready || (state == State.GameOver && restartOnGrab);
-            bool allowed = !inputLocked && waiting && !anyHeld;
+            // メニューや設定パネルが出ている間も掴めない
+            bool locked = inputLocked || InputGate.GrabBlocked;
+            bool allowed = !locked && waiting && !anyHeld;
             foreach (ThrowableObject ball in balls)
             {
                 if (ball != null && ball.TryGetComponent(out XRGrabInteractable grab))
                 {
                     // ファウルラインを越える前なら、投げたボールを拾い直せる
-                    bool canRetake = state == State.Rolling && ball == currentBall && !crossedFoulLine && !inputLocked;
+                    bool canRetake = state == State.Rolling && ball == currentBall && !crossedFoulLine && !locked;
                     bool enable = allowed || grab.isSelected || canRetake;
                     if (grab.enabled != enable)
                     {
@@ -354,6 +357,8 @@ namespace VRGame3.Sports.Bowling
             int knocked = pinSetter.CountKnockedSinceMark();
 
             resetRackOnClear = sheet.AddRoll(knocked);
+            // 1投でもしたらゲームの途中(メニューからハブへもどるときに確認を出す)
+            GameSession.InProgress = !sheet.IsGameOver;
             string symbol = sheet.GetRollSymbol(frame, rollIndex);
             scoreBoard.Refresh(sheet);
 
