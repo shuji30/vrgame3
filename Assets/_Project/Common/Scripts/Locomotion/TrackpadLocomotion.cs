@@ -66,6 +66,9 @@ namespace VRGame3.Common
         [Range(0f, 60f)]
         [SerializeField] private float maxSlopeAngle = 30f;
 
+        [Tooltip("オンにすると、TeleportArea の目印を付けた床にだけ移動できる(レーンの上や横へ出ないようにする)")]
+        [SerializeField] private bool requireTeleportArea;
+
         [Tooltip("放物線を描く LineRenderer。空なら線は出さない")]
         [SerializeField] private LineRenderer arcLine;
 
@@ -197,7 +200,8 @@ namespace VRGame3.Common
                         teleportLayers, QueryTriggerInteraction.Ignore))
                 {
                     arcPoints.Add(hit.point);
-                    hasValidTarget = Vector3.Angle(hit.normal, up) <= maxSlopeAngle;
+                    hasValidTarget = Vector3.Angle(hit.normal, up) <= maxSlopeAngle &&
+                                     (!requireTeleportArea || hit.collider.GetComponentInParent<TeleportArea>() != null);
                     targetPoint = hit.point;
                     break;
                 }

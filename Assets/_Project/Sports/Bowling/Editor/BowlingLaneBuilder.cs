@@ -3,6 +3,7 @@ using TMPro;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.Rendering;
 using UnityEngine.SceneManagement;
 using UnityEngine.XR.Interaction.Toolkit.Interactables;
 using VRGame3.Common;
@@ -11,10 +12,10 @@ using VRGame3.Common.EditorTools;
 namespace VRGame3.Sports.Bowling.EditorTools
 {
     /// <summary>
-    /// メニュー「VRGame3 > ボウリング場を作る」で、M1 の1レーンを仮の形状で組み立てる。
-    /// レーン・ガター・ピット・ピン10本・ボール置き台とボール3個・スコア板・XR Origin を配置する。
-    /// 寸法は本物のレーンに合わせる(ファウルラインから先頭のピンまで 18.29m)。
-    /// 見た目は docs/art-direction.md のパレットから選んだ仮の色で、モデルは後で差し替える。
+    /// メニュー「VRGame3 > ボウリング場を作る」で、M1 のボウリング小屋(室内・2レーン)を仮の形状で組み立てる。
+    /// 自分のレーン(X=0)と CPU のレーン(X=1.8、M3 で使う)・小屋・外の砂地と海・ピン・ボール置き台と
+    /// ボール3個・スコア板・XR Origin を配置する。寸法はレーンを本物に合わせ(ファウルラインから先頭のピンまで 18.29m)、
+    /// 小屋と色は docs/art-direction.md 第9章 M1「ボウリング小屋の仮組み」に合わせる。
     /// </summary>
     public static class BowlingLaneBuilder
     {
@@ -23,7 +24,9 @@ namespace VRGame3.Sports.Bowling.EditorTools
         private const string MaterialFolder = "Assets/_Project/Art/Materials/Bowling";
         private const string PhysicsFolder = "Assets/_Project/Sports/Bowling/Physics";
 
-        // レーンの寸法(m)。Z+ がピンの方向、ファウルラインが Z=0
+        // レーンの寸法(m)。Z+ がピンの方向、ファウルラインが Z=0、レーンの上面が Y=0
+        private const float PlayerLaneX = 0f;
+        private const float CpuLaneX = 1.8f;
         private const float LaneWidth = 1.066f;
         private const float GutterWidth = 0.24f;
         private const float GutterDepth = 0.08f;
@@ -33,6 +36,28 @@ namespace VRGame3.Sports.Bowling.EditorTools
         private const float PitDepth = 0.6f;
         private const float SideBoardThickness = 0.05f;
         private const float PinSpacing = 0.305f;
+        private const float Bottom = -PitDepth - 0.1f;
+        private const float HalfLane = LaneWidth / 2f;
+        private const float GutterOuter = HalfLane + GutterWidth;
+        private const float LaneOuter = GutterOuter + SideBoardThickness;
+
+        // 小屋の寸法(m)
+        private const float HutMinX = -2.6f;
+        private const float HutMaxX = 4.4f;
+        private const float HutMinZ = -7f;
+        private const float HutMaxZ = 22f;
+        private const float WallThickness = 0.15f;
+        private const float InnerMinX = HutMinX + WallThickness;
+        private const float InnerMaxX = HutMaxX - WallThickness;
+        private const float InnerMinZ = HutMinZ + WallThickness;
+        private const float InnerMaxZ = HutMaxZ - WallThickness;
+        private const float EaveHeight = 3.6f;
+        private const float RidgeX = 0.9f;
+        private const float RidgeHeight = 4.9f;
+        private const float RoofPitch = 20f;
+
+        // テレポートできる床(自分のレーンの助走路側)の右端
+        private const float TeleportMaxX = 0.6f;
 
         // ピンの寸法(本物はおよそ高さ 38cm、一番太い所で直径 12cm、1.5kg)
         private const float PinHeight = 0.38f;
@@ -45,7 +70,7 @@ namespace VRGame3.Sports.Bowling.EditorTools
 
         // プレイヤーとボール置き台の位置
         private static readonly Vector3 PlayerPosition = new Vector3(0f, 0f, -3f);
-        private static readonly Vector3 RackPosition = new Vector3(0.75f, 0f, -2.3f);
+        private static readonly Vector3 RackPosition = new Vector3(0.9f, 0f, -2.3f);
         private const float RackHeight = 0.8f;
 
         [MenuItem("VRGame3/ボウリング場を作る")]
@@ -81,15 +106,30 @@ namespace VRGame3.Sports.Bowling.EditorTools
                 Object.DestroyImmediate(defaultCamera);
             }
 
+            SetUpSun();
+
             PhysicsMaterial lanePhysics = GetOrCreatePhysicsMaterial("Lane", 0.04f, 0f);
             PhysicsMaterial pinPhysics = GetOrCreatePhysicsMaterial("Pin", 0.35f, 0.3f);
             PhysicsMaterial ballPhysics = GetOrCreatePhysicsMaterial("Ball", 0.04f, 0.05f);
             PhysicsMaterial cushionPhysics = GetOrCreatePhysicsMaterial("Cushion", 0.6f, 0f);
 
             var root = new GameObject("ボウリング場");
-            BuildLane(root.transform, palette, lanePhysics, cushionPhysics);
-            Transform foulLine = BuildFoulLine(root.transform, palette);
-            PinSetter pinSetter = BuildPins(root.transform, palette, pinPhysics);
+            var building = new GameObject("小屋").transform;
+            building.SetParent(root.transform, false);
+            var outside = new GameObject("小屋の外").transform;
+            outside.SetParent(root.transform, false);
+
+            BuildLane(root.transform, "自分のレーン", PlayerLaneX, palette, lanePhysics, cushionPhysics);
+            BuildLane(root.transform, "CPU のレーン", CpuLaneX, palette, lanePhysics, cushionPhysics);
+            BuildLaneGap(root.transform, palette, lanePhysics);
+            BuildFloor(building, palette);
+            BuildHut(building, palette);
+            BuildOutside(outside, palette);
+
+            Transform foulLine = BuildFoulLine(root.transform, "ファウルライン(自分のレーン)", PlayerLaneX, palette);
+            BuildFoulLine(root.transform, "ファウルライン(CPU のレーン)", CpuLaneX, palette);
+            PinSetter pinSetter = BuildPins(root.transform, "ピンセッター(自分のレーン)", PlayerLaneX, palette, pinPhysics);
+            BuildPins(root.transform, "ピンセッター(CPU のレーン)", CpuLaneX, palette, pinPhysics);
             List<ThrowableObject> balls = BuildBallRack(root.transform, palette, ballPhysics, foulLine);
             BowlingScoreBoard scoreBoard = BuildScoreBoards(root.transform, palette);
 
@@ -109,7 +149,8 @@ namespace VRGame3.Sports.Bowling.EditorTools
             gameSo.ApplyModifiedPropertiesWithoutUndo();
 
             Material arc = SceneBuildUtility.GetOrCreateArcMaterial(MaterialFolder, "B_TeleportArc");
-            List<string> warnings = SceneBuildUtility.SetUpXROrigin(arc, palette.Reticle, PlayerPosition, Quaternion.identity);
+            List<string> warnings = SceneBuildUtility.SetUpXROrigin(arc, palette.Reticle, PlayerPosition, Quaternion.identity,
+                requireTeleportArea: true);
 
             EditorSceneManager.SaveScene(scene, ScenePath);
             SceneBuildUtility.AddSceneToBuildSettings(ScenePath);
@@ -129,75 +170,205 @@ namespace VRGame3.Sports.Bowling.EditorTools
         }
 
         /// <summary>
-        /// 床・レーン・ガター・横の板・ピット・奥のクッションを作る。
-        /// レーンとガターは下まで厚みを持たせ、ピットの穴が見えても宙に浮いて見えないようにする。
+        /// 太陽(Directional Light)をプレイヤーの背中側の斜め上から当てる。
         /// </summary>
-        private static void BuildLane(Transform parent, BowlingBuildPalette palette, PhysicsMaterial lanePhysics,
-            PhysicsMaterial cushionPhysics)
+        private static void SetUpSun()
         {
-            float halfLane = LaneWidth / 2f;
-            float gutterOuter = halfLane + GutterWidth;
-            float boardCenter = gutterOuter + SideBoardThickness / 2f;
-            float sideFloorInner = gutterOuter + SideBoardThickness;
-            const float sideFloorWidth = 6f;
-            const float bottom = -PitDepth - 0.1f;
+            foreach (Light light in Object.FindObjectsByType<Light>(FindObjectsSortMode.None))
+            {
+                if (light.type == LightType.Directional)
+                {
+                    light.transform.rotation = Quaternion.Euler(50f, 30f, 0f);
+                }
+            }
+        }
 
-            // 投げる側の床(ファウルラインより手前)
-            Box(parent, "助走路", new Vector3(0f, -0.05f, -3f), new Vector3(sideFloorInner * 2f + sideFloorWidth * 2f, 0.1f, 6f),
-                palette.WoodLight, lanePhysics);
+        /// <summary>
+        /// 1レーン分:レーン・ガター・横の板・キックバック・ピットの底・奥のクッション。
+        /// レーンとガターは下まで厚みを持たせ、ピットの穴から見ても宙に浮いて見えないようにする。
+        /// </summary>
+        private static void BuildLane(Transform root, string name, float x, BowlingBuildPalette palette,
+            PhysicsMaterial lanePhysics, PhysicsMaterial cushionPhysics)
+        {
+            var parent = new GameObject(name).transform;
+            parent.SetParent(root, false);
 
-            // 周りの砂浜(見た目だけの広い床)
-            Box(parent, "砂浜", new Vector3(0f, -0.15f, -16f), new Vector3(40f, 0.1f, 20f), palette.Sand, null);
-
-            // レーン本体
-            Box(parent, "レーン", new Vector3(0f, bottom / 2f, LaneEnd / 2f), new Vector3(LaneWidth, -bottom, LaneEnd),
+            Block(parent, "レーン", new Vector3(x - HalfLane, Bottom, 0f), new Vector3(x + HalfLane, 0f, LaneEnd),
                 palette.WoodLight, lanePhysics);
 
             for (int side = -1; side <= 1; side += 2)
             {
                 string label = side < 0 ? "左" : "右";
-                float gutterTop = -GutterDepth;
-                Box(parent, $"ガター({label})", new Vector3(side * (halfLane + GutterWidth / 2f), (bottom + gutterTop) / 2f, LaneEnd / 2f),
-                    new Vector3(GutterWidth, gutterTop - bottom, LaneEnd), palette.Stone, lanePhysics);
+                float inner = x + side * HalfLane;
+                float gutter = x + side * GutterOuter;
+                float outer = x + side * LaneOuter;
+
+                Block(parent, $"ガター({label})", new Vector3(Mathf.Min(inner, gutter), Bottom, 0f),
+                    new Vector3(Mathf.Max(inner, gutter), -GutterDepth, LaneEnd), palette.Stone, lanePhysics);
 
                 // 横の板:ピンの手前までは低く、ピン置き場の横(キックバック)は高く
-                Box(parent, $"横の板({label})", new Vector3(side * boardCenter, (bottom + 0.15f) / 2f, 17f / 2f),
-                    new Vector3(SideBoardThickness, 0.15f - bottom, 17f), palette.Wood, lanePhysics);
-                Box(parent, $"キックバック({label})", new Vector3(side * boardCenter, (bottom + 0.7f) / 2f, (17f + PitEnd) / 2f),
-                    new Vector3(SideBoardThickness, 0.7f - bottom, PitEnd - 17f), palette.Wood, cushionPhysics);
-
-                // レーンの両脇の床
-                Box(parent, $"レーン脇の床({label})", new Vector3(side * (sideFloorInner + sideFloorWidth / 2f), -0.05f, PitEnd / 2f),
-                    new Vector3(sideFloorWidth, 0.1f, PitEnd), palette.Sand, null);
+                Block(parent, $"横の板({label})", new Vector3(Mathf.Min(gutter, outer), Bottom, 0f),
+                    new Vector3(Mathf.Max(gutter, outer), 0.15f, 17f), palette.Wood, lanePhysics);
+                Block(parent, $"キックバック({label})", new Vector3(Mathf.Min(gutter, outer), Bottom, 17f),
+                    new Vector3(Mathf.Max(gutter, outer), 0.7f, InnerMaxZ), palette.Wood, cushionPhysics);
             }
 
             // ピット:レーンの先の一段低い所。倒れたピンとボールがここに落ちる
-            Box(parent, "ピットの底", new Vector3(0f, -PitDepth - 0.05f, (LaneEnd + PitEnd) / 2f),
-                new Vector3(gutterOuter * 2f, 0.1f, PitEnd - LaneEnd), palette.Stone, cushionPhysics);
-            Box(parent, "奥のクッション", new Vector3(0f, (bottom + 1.2f) / 2f, PitEnd + 0.05f),
-                new Vector3(sideFloorInner * 2f, 1.2f - bottom, 0.1f), palette.Accent, cushionPhysics);
+            Block(parent, "ピットの底", new Vector3(x - GutterOuter, Bottom, LaneEnd), new Vector3(x + GutterOuter, -PitDepth, PitEnd),
+                palette.Stone, cushionPhysics);
+            Block(parent, "奥のクッション", new Vector3(x - LaneOuter, Bottom, PitEnd), new Vector3(x + LaneOuter, 1.2f, InnerMaxZ),
+                palette.Accent, cushionPhysics);
+        }
 
-            // 奥の壁と屋根の代わりの梁(レーンの終わりを分かりやすくする)
-            Box(parent, "奥の壁", new Vector3(0f, 1.5f, PitEnd + 0.3f), new Vector3(sideFloorInner * 2f + 4f, 4.4f, 0.4f),
+        /// <summary>2つのレーンの間のすき間を笠木でふさぐ。</summary>
+        private static void BuildLaneGap(Transform root, BowlingBuildPalette palette, PhysicsMaterial lanePhysics)
+        {
+            Block(root, "レーンの間の笠木", new Vector3(PlayerLaneX + LaneOuter, Bottom, 0f),
+                new Vector3(CpuLaneX - LaneOuter, 0.03f, InnerMaxZ), palette.Wood, lanePhysics);
+        }
+
+        /// <summary>
+        /// 室内の床。自分のレーンの助走路側だけに TeleportArea の目印を付け、
+        /// CPU のレーンの助走路・レーンの横・小屋の外へはテレポートできないようにする。
+        /// </summary>
+        private static void BuildFloor(Transform parent, BowlingBuildPalette palette)
+        {
+            GameObject playerFloor = Block(parent, "助走路(テレポートできる床)", new Vector3(InnerMinX, -0.1f, InnerMinZ),
+                new Vector3(TeleportMaxX, 0f, 0f), palette.WoodLight, null);
+            playerFloor.AddComponent<TeleportArea>();
+
+            Block(parent, "CPU 側の助走路", new Vector3(TeleportMaxX, -0.1f, InnerMinZ), new Vector3(InnerMaxX, 0f, 0f),
+                palette.WoodLight, null);
+            Block(parent, "左の床", new Vector3(InnerMinX, -0.1f, 0f), new Vector3(PlayerLaneX - LaneOuter, 0f, InnerMaxZ),
+                palette.Wood, null);
+            Block(parent, "右の床", new Vector3(CpuLaneX + LaneOuter, -0.1f, 0f), new Vector3(InnerMaxX, 0f, InnerMaxZ),
                 palette.Wood, null);
         }
 
-        private static Transform BuildFoulLine(Transform parent, BowlingBuildPalette palette)
+        /// <summary>
+        /// 小屋:側壁(腰壁・窓の開口・上の帯・柱)、前壁(入口と日よけ)、奥壁、切妻屋根、梁、ピン上の幕板。
+        /// </summary>
+        private static void BuildHut(Transform parent, BowlingBuildPalette palette)
         {
-            GameObject line = SceneBuildUtility.CreatePrimitive("ファウルライン", PrimitiveType.Cube, new Vector3(0f, 0.001f, 0f),
+            const float windowBottom = 0.9f;
+            const float windowTop = 2.4f;
+            const float windowStartZ = -6f;
+            const float windowEndZ = 17f;
+
+            // 側壁
+            for (int side = -1; side <= 1; side += 2)
+            {
+                string label = side < 0 ? "左" : "右";
+                float minX = side < 0 ? HutMinX : InnerMaxX;
+                float maxX = side < 0 ? InnerMinX : HutMaxX;
+
+                Block(parent, $"腰壁({label})", new Vector3(minX, 0f, HutMinZ), new Vector3(maxX, windowBottom, HutMaxZ),
+                    palette.Wood, null);
+                Block(parent, $"上の帯({label})", new Vector3(minX, windowTop, HutMinZ), new Vector3(maxX, EaveHeight, HutMaxZ),
+                    palette.WoodLight, null);
+                Block(parent, $"窓の手前の壁({label})", new Vector3(minX, windowBottom, HutMinZ),
+                    new Vector3(maxX, windowTop, windowStartZ), palette.WoodLight, null);
+                Block(parent, $"窓の奥の壁({label})", new Vector3(minX, windowBottom, windowEndZ),
+                    new Vector3(maxX, windowTop, HutMaxZ), palette.WoodLight, null);
+
+                foreach (float z in new[] { -3f, 1f, 5f, 9f, 13f })
+                {
+                    Block(parent, $"柱({label} Z{z})", new Vector3(minX, windowBottom, z - 0.075f),
+                        new Vector3(maxX, windowTop, z + 0.075f), palette.WoodDark, null);
+                }
+            }
+
+            // 前壁(プレイヤーの背後):入口の開口から海と砂浜が見える
+            const float doorMinX = -0.6f;
+            const float doorMaxX = 2.4f;
+            const float doorTop = 2.6f;
+            Block(parent, "前壁(左)", new Vector3(HutMinX, 0f, HutMinZ), new Vector3(doorMinX, EaveHeight, InnerMinZ),
+                palette.WoodLight, null);
+            Block(parent, "前壁(右)", new Vector3(doorMaxX, 0f, HutMinZ), new Vector3(HutMaxX, EaveHeight, InnerMinZ),
+                palette.WoodLight, null);
+            Block(parent, "入口の上", new Vector3(doorMinX, doorTop, HutMinZ), new Vector3(doorMaxX, EaveHeight, InnerMinZ),
+                palette.WoodLight, null);
+            GameObject awning = Box(parent, "日よけ", Vector3.zero, new Vector3(3.6f, 0.08f, 1.2f), palette.Accent, null);
+            awning.transform.SetPositionAndRotation(
+                new Vector3((doorMinX + doorMaxX) / 2f, 2.8f, HutMinZ - 0.6f * Mathf.Cos(15f * Mathf.Deg2Rad)),
+                Quaternion.Euler(-15f, 0f, 0f));
+
+            // 奥壁:開口なし(ピンの背景を落ち着かせ、逆光を防ぐ)
+            Block(parent, "奥壁", new Vector3(HutMinX, Bottom, InnerMaxZ), new Vector3(HutMaxX, EaveHeight, HutMaxZ),
+                palette.WoodLight, null);
+
+            // 切妻屋根:棟から軒へ下がる板2枚。前後の三角部分(妻)は開けたまま
+            float slopeLength = 4.15f;
+            float halfRun = slopeLength / 2f * Mathf.Cos(RoofPitch * Mathf.Deg2Rad);
+            float halfRise = slopeLength / 2f * Mathf.Sin(RoofPitch * Mathf.Deg2Rad);
+            float roofLength = HutMaxZ - HutMinZ + 1f;
+            float roofCenterZ = (HutMinZ + HutMaxZ) / 2f;
+            for (int side = -1; side <= 1; side += 2)
+            {
+                GameObject roof = Box(parent, side < 0 ? "屋根(左)" : "屋根(右)", Vector3.zero,
+                    new Vector3(slopeLength, 0.1f, roofLength), palette.Roof, null);
+                roof.transform.SetPositionAndRotation(
+                    new Vector3(RidgeX + side * halfRun, RidgeHeight - halfRise, roofCenterZ),
+                    Quaternion.Euler(0f, 0f, -side * RoofPitch));
+            }
+
+            Box(parent, "棟", new Vector3(RidgeX, RidgeHeight, roofCenterZ), new Vector3(0.15f, 0.15f, roofLength),
+                palette.WoodDark, null);
+            foreach (float z in new[] { 2.5f, 6.5f, 10.5f, 14.5f })
+            {
+                Block(parent, $"梁(Z{z})", new Vector3(InnerMinX, EaveHeight, z - 0.075f), new Vector3(InnerMaxX, EaveHeight + 0.2f, z + 0.075f),
+                    palette.WoodDark, null);
+            }
+
+            // ピン上の幕板:ピンへの視線は幕板の位置で Y 約 0.45 なので、下端 1.2 ならピンは隠れない
+            Block(parent, "幕板", new Vector3(InnerMinX, 1.2f, 18.8f), new Vector3(InnerMaxX, EaveHeight, 18.85f), palette.Accent, null);
+        }
+
+        /// <summary>
+        /// 小屋の外:砂地(小屋の床の下には入れない)・海・ヤシの木。どこにも TeleportArea を付けない。
+        /// </summary>
+        private static void BuildOutside(Transform parent, BowlingBuildPalette palette)
+        {
+            const float sandTop = -0.05f;
+            const float sandBottom = -0.55f;
+            Block(parent, "砂地(手前)", new Vector3(-10f, sandBottom, -20f), new Vector3(22f, sandTop, HutMinZ), palette.Sand, null);
+            Block(parent, "砂地(奥)", new Vector3(-10f, sandBottom, HutMaxZ), new Vector3(22f, sandTop, 30f), palette.Sand, null);
+            Block(parent, "砂地(左)", new Vector3(-10f, sandBottom, HutMinZ), new Vector3(HutMinX, sandTop, HutMaxZ), palette.Sand, null);
+            Block(parent, "砂地(右)", new Vector3(HutMaxX, sandBottom, HutMinZ), new Vector3(22f, sandTop, HutMaxZ), palette.Sand, null);
+
+            GameObject sea = SceneBuildUtility.CreatePrimitive("海", PrimitiveType.Plane, new Vector3(6f, -0.4f, 5f),
+                new Vector3(30f, 1f, 30f), palette.Sea, false);
+            MakeStatic(sea, parent);
+
+            Vector3[] palms = { new Vector3(-6f, 0f, 2f), new Vector3(-7f, 0f, 10f), new Vector3(8f, 0f, -1f) };
+            for (int i = 0; i < palms.Length; i++)
+            {
+                GameObject trunk = SceneBuildUtility.CreatePrimitive($"ヤシの幹{i + 1}", PrimitiveType.Cylinder,
+                    palms[i] + new Vector3(0f, 2f, 0f), new Vector3(0.25f, 2f, 0.25f), palette.WoodDark, false);
+                MakeStatic(trunk, parent);
+                GameObject leaves = SceneBuildUtility.CreatePrimitive($"ヤシの葉{i + 1}", PrimitiveType.Sphere,
+                    palms[i] + new Vector3(0f, 4.1f, 0f), new Vector3(2.8f, 0.5f, 2.8f), palette.Leaf, false);
+                MakeStatic(leaves, parent);
+            }
+        }
+
+        private static Transform BuildFoulLine(Transform parent, string name, float x, BowlingBuildPalette palette)
+        {
+            GameObject line = SceneBuildUtility.CreatePrimitive(name, PrimitiveType.Cube, new Vector3(x, 0.001f, 0f),
                 new Vector3(LaneWidth + GutterWidth * 2f, 0.002f, 0.02f), palette.Line, false);
-            line.transform.SetParent(parent, true);
+            MakeStatic(line, parent);
             return line.transform;
         }
 
         /// <summary>
         /// ピン10本を正三角形に並べる。先頭のピンがファウルラインから 18.29m、隣のピンとの間は 30.5cm。
         /// </summary>
-        private static PinSetter BuildPins(Transform parent, BowlingBuildPalette palette, PhysicsMaterial pinPhysics)
+        private static PinSetter BuildPins(Transform parent, string name, float laneX, BowlingBuildPalette palette,
+            PhysicsMaterial pinPhysics)
         {
-            var setterObject = new GameObject("ピンセッター");
+            var setterObject = new GameObject(name);
             setterObject.transform.SetParent(parent, false);
-            setterObject.transform.position = new Vector3(0f, 0f, HeadPinDistance);
+            setterObject.transform.position = new Vector3(laneX, 0f, HeadPinDistance);
             var setter = setterObject.AddComponent<PinSetter>();
 
             float rowDepth = PinSpacing * Mathf.Sqrt(3f) / 2f;
@@ -207,8 +378,8 @@ namespace VRGame3.Sports.Bowling.EditorTools
             {
                 for (int i = 0; i <= row; i++)
                 {
-                    float x = (i - row / 2f) * PinSpacing;
-                    Vector3 position = new Vector3(x, 0.001f, HeadPinDistance + row * rowDepth);
+                    float x = laneX + (i - row / 2f) * PinSpacing;
+                    var position = new Vector3(x, 0.001f, HeadPinDistance + row * rowDepth);
                     pins.Add(BuildPin(setterObject.transform, $"ピン{number}", position, palette.Pin, pinPhysics));
                     number++;
                 }
@@ -262,7 +433,7 @@ namespace VRGame3.Sports.Bowling.EditorTools
         }
 
         /// <summary>
-        /// ボール置き台とボール3個。台の上の2本のレールの間にボールを置いて転がり落ちないようにする。
+        /// 2レーン共用のボール置き台(レーンの間)とボール3個。台の上の2本のレールの間にボールを置き、転がり落ちないようにする。
         /// </summary>
         private static List<ThrowableObject> BuildBallRack(Transform parent, BowlingBuildPalette palette, PhysicsMaterial ballPhysics,
             Transform foulLine)
@@ -271,7 +442,7 @@ namespace VRGame3.Sports.Bowling.EditorTools
             rack.transform.SetParent(parent, false);
             rack.transform.position = RackPosition;
 
-            Box(rack.transform, "台", RackPosition + new Vector3(0f, RackHeight / 2f, 0f), new Vector3(0.4f, RackHeight, 1.0f),
+            Box(rack.transform, "台", RackPosition + new Vector3(0f, RackHeight / 2f, 0f), new Vector3(0.3f, RackHeight, 1.0f),
                 palette.Wood, null);
             for (int side = -1; side <= 1; side += 2)
             {
@@ -315,57 +486,62 @@ namespace VRGame3.Sports.Bowling.EditorTools
         }
 
         /// <summary>
-        /// 大型スコア板(レーンの上、目の高さより少し上)と小型スコア板(ボール置き台の横)、
-        /// ストライクなどの大きな文字(ピンの手前)を作る。docs/art-direction.md の 6.1 と 6.2 に合わせる。
+        /// 大型スコア板(2レーン共用、上段が自分・下段が CPU)と小型スコア板(ボール置き台の横)、
+        /// ストライクなどの大きな文字(自分のレーンのピンの手前)を作る。docs/art-direction.md の 6.1・6.2 と第9章 M1 に合わせる。
         /// </summary>
         private static BowlingScoreBoard BuildScoreBoards(Transform parent, BowlingBuildPalette palette)
         {
             var boardObject = new GameObject("スコア板");
             boardObject.transform.SetParent(parent, false);
-            var board = boardObject.AddComponent<BowlingScoreBoard>();
 
-            // 大型板:プレイヤーから約 5.5m 先、高さ 2.7m(仰角およそ 11°)
-            const float largeZ = 2.5f;
-            const float largeY = 2.7f;
-            const float cellWidth = 0.36f;
-            const float totalWidth = 0.6f;
-            float boardWidth = cellWidth * BowlingScoreSheet.FrameCount + totalWidth + 0.1f;
-            Box(boardObject.transform, "大型スコア板", new Vector3(0f, largeY, largeZ + 0.03f), new Vector3(boardWidth, 0.95f, 0.05f),
+            // 大型板:中心 (0.9, 2.85, 2.5)、幅 4.3 × 高さ 1.4。上端 3.55 は梁の下、下端 2.15 は視線より上
+            const float centerX = RidgeX;
+            const float centerY = 2.85f;
+            const float boardZ = 2.5f;
+            const float textZ = boardZ - 0.02f;
+            const float boardWidth = 4.3f;
+            const float labelWidth = 0.4f;
+            const float cellWidth = 0.33f;
+            const float totalWidth = 0.5f;
+            Box(boardObject.transform, "大型スコア板", new Vector3(centerX, centerY, boardZ + 0.03f), new Vector3(boardWidth, 1.4f, 0.05f),
                 palette.Board, null);
 
+            float left = centerX - boardWidth / 2f + 0.05f;
+            float labelX = left + labelWidth / 2f;
+            float firstCellX = left + labelWidth + cellWidth / 2f;
+            float totalX = left + labelWidth + cellWidth * BowlingScoreSheet.FrameCount + totalWidth / 2f;
+
+            // 見出しの段:フレーム番号と TOTAL
             var frameNumbers = new TMP_Text[BowlingScoreSheet.FrameCount];
-            var rolls = new TMP_Text[BowlingScoreSheet.FrameCount];
-            var scores = new TMP_Text[BowlingScoreSheet.FrameCount];
-            float left = -boardWidth / 2f + 0.05f;
             for (int f = 0; f < BowlingScoreSheet.FrameCount; f++)
             {
-                float x = left + cellWidth * (f + 0.5f);
                 frameNumbers[f] = Text(boardObject.transform, $"フレーム番号{f + 1}", (f + 1).ToString(),
-                    new Vector3(x, largeY + 0.32f, largeZ), cellWidth, 1.2f, palette.TextColor);
-                rolls[f] = Text(boardObject.transform, $"投球{f + 1}", string.Empty,
-                    new Vector3(x, largeY + 0.06f, largeZ), cellWidth, 1.6f, palette.TextColor);
-                scores[f] = Text(boardObject.transform, $"累計{f + 1}", string.Empty,
-                    new Vector3(x, largeY - 0.26f, largeZ), cellWidth, 1.8f, palette.TextColor);
+                    new Vector3(firstCellX + cellWidth * f, 3.42f, textZ), cellWidth, 1.0f, palette.TextColor);
             }
 
-            float totalX = left + cellWidth * BowlingScoreSheet.FrameCount + totalWidth / 2f;
-            Text(boardObject.transform, "合計の見出し", "TOTAL", new Vector3(totalX, largeY + 0.32f, largeZ), totalWidth, 1.2f,
-                palette.TextColor);
-            TMP_Text total = Text(boardObject.transform, "合計", "0", new Vector3(totalX, largeY - 0.1f, largeZ), totalWidth, 2.6f,
-                palette.HighlightColor);
+            Text(boardObject.transform, "合計の見出し", "TOTAL", new Vector3(totalX, 3.42f, textZ), totalWidth, 1.0f, palette.TextColor);
 
-            // 小型板:ボール置き台の横、胸の高さ。プレイヤーの方を向ける
-            Vector3 smallPosition = RackPosition + new Vector3(0.45f, 1.15f, 0.2f);
-            Vector3 eye = PlayerPosition + new Vector3(0f, 1.6f, 0f);
-            Vector3 toPlayer = eye - smallPosition;
+            // 上段(自分)と下段(CPU)
+            var board = boardObject.AddComponent<BowlingScoreBoard>();
+            ScoreRowTexts player = BuildScoreRow(boardObject.transform, "自分の段", "YOU", palette.TagPlayer, 3.17f, 2.93f,
+                labelX, firstCellX, cellWidth, totalX, totalWidth, textZ, palette);
+            var cpuRowObject = new GameObject("CPU の段(M3 で使う)");
+            cpuRowObject.transform.SetParent(boardObject.transform, false);
+            var cpuBoard = cpuRowObject.AddComponent<BowlingScoreBoard>();
+            ScoreRowTexts cpu = BuildScoreRow(cpuRowObject.transform, "CPU の段", "CPU", palette.TagCpu, 2.62f, 2.38f,
+                labelX, firstCellX, cellWidth, totalX, totalWidth, textZ, palette);
+            cpu.Total.text = string.Empty;
+
+            // 小型板:ボール置き台のプレイヤー側、胸の高さ。プレイヤーの方を向ける
+            var smallPosition = new Vector3(0.55f, 1.15f, -1.9f);
+            Vector3 toPlayer = PlayerPosition - smallPosition;
             toPlayer.y = 0f;
             Quaternion smallRotation = Quaternion.LookRotation(-toPlayer.normalized, Vector3.up);
             var small = new GameObject("小型スコア板");
             small.transform.SetParent(boardObject.transform, false);
             small.transform.SetPositionAndRotation(smallPosition, smallRotation);
             GameObject smallBack = Box(small.transform, "板", smallPosition, new Vector3(0.62f, 0.3f, 0.03f), palette.Board, null);
-            smallBack.transform.rotation = smallRotation;
-            smallBack.transform.position = smallPosition + smallRotation * new Vector3(0f, 0f, 0.02f);
+            smallBack.transform.SetPositionAndRotation(smallPosition + smallRotation * new Vector3(0f, 0f, 0.02f), smallRotation);
             TMP_Text smallFrame = Text(small.transform, "現在のフレーム", string.Empty, Vector3.zero, 0.6f, 0.6f, palette.TextColor);
             smallFrame.transform.localPosition = new Vector3(0f, 0.06f, 0f);
             smallFrame.transform.localRotation = Quaternion.identity;
@@ -373,35 +549,96 @@ namespace VRGame3.Sports.Bowling.EditorTools
             smallTotal.transform.localPosition = new Vector3(0f, -0.06f, 0f);
             smallTotal.transform.localRotation = Quaternion.identity;
 
-            // 大きな文字:ピンの手前の上空。プレイヤーから 10m 以上離す
-            TMP_Text message = Text(boardObject.transform, "大きな文字", "STRIKE!", new Vector3(0f, 1.6f, 14f), 8f, 7f,
+            // 大きな文字:自分のレーンのピンの手前の上空。プレイヤーから 10m 以上離し、幅は隣のレーンにはみ出さない
+            TMP_Text message = Text(boardObject.transform, "大きな文字", "STRIKE!", new Vector3(PlayerLaneX, 1.6f, 14f), 3f, 6f,
                 palette.HighlightColor);
             message.fontStyle = FontStyles.Bold;
             message.gameObject.SetActive(false);
 
             var so = new SerializedObject(board);
             SetArray(so.FindProperty("frameNumberTexts"), frameNumbers);
-            SetArray(so.FindProperty("rollTexts"), rolls);
-            SetArray(so.FindProperty("scoreTexts"), scores);
-            so.FindProperty("totalText").objectReferenceValue = total;
+            SetArray(so.FindProperty("rollTexts"), player.Rolls);
+            SetArray(so.FindProperty("scoreTexts"), player.Scores);
+            so.FindProperty("totalText").objectReferenceValue = player.Total;
             so.FindProperty("smallFrameText").objectReferenceValue = smallFrame;
             so.FindProperty("smallTotalText").objectReferenceValue = smallTotal;
             so.FindProperty("messageText").objectReferenceValue = message;
             so.ApplyModifiedPropertiesWithoutUndo();
+
+            var cpuSo = new SerializedObject(cpuBoard);
+            SetArray(cpuSo.FindProperty("frameNumberTexts"), new TMP_Text[0]);
+            SetArray(cpuSo.FindProperty("rollTexts"), cpu.Rolls);
+            SetArray(cpuSo.FindProperty("scoreTexts"), cpu.Scores);
+            cpuSo.FindProperty("totalText").objectReferenceValue = cpu.Total;
+            cpuSo.ApplyModifiedPropertiesWithoutUndo();
             return board;
         }
 
+        /// <summary>
+        /// 大型スコア板の1段:名前の札(色と文字)、各フレームの投球記号と累計、合計。
+        /// </summary>
+        private static ScoreRowTexts BuildScoreRow(Transform parent, string name, string label, Material tagMaterial, float rollY,
+            float scoreY, float labelX, float firstCellX, float cellWidth, float totalX, float totalWidth, float textZ,
+            BowlingBuildPalette palette)
+        {
+            float rowCenterY = (rollY + scoreY) / 2f;
+            Box(parent, $"{name}の札", new Vector3(labelX, rowCenterY, textZ + 0.01f), new Vector3(0.36f, 0.44f, 0.01f),
+                tagMaterial, null);
+            Text(parent, $"{name}の名前", label, new Vector3(labelX, rowCenterY, textZ - 0.005f), 0.36f, 1.1f, palette.TextColor);
+
+            var row = new ScoreRowTexts
+            {
+                Rolls = new TMP_Text[BowlingScoreSheet.FrameCount],
+                Scores = new TMP_Text[BowlingScoreSheet.FrameCount],
+            };
+            for (int f = 0; f < BowlingScoreSheet.FrameCount; f++)
+            {
+                float x = firstCellX + cellWidth * f;
+                row.Rolls[f] = Text(parent, $"{name}の投球{f + 1}", string.Empty, new Vector3(x, rollY, textZ), cellWidth, 1.5f,
+                    palette.TextColor);
+                row.Scores[f] = Text(parent, $"{name}の累計{f + 1}", string.Empty, new Vector3(x, scoreY, textZ), cellWidth, 1.6f,
+                    palette.TextColor);
+            }
+
+            row.Total = Text(parent, $"{name}の合計", "0", new Vector3(totalX, rowCenterY, textZ), totalWidth, 2.2f,
+                palette.HighlightColor);
+            return row;
+        }
+
+        /// <summary>
+        /// 最小の角と最大の角を指定して箱を作る。
+        /// </summary>
+        private static GameObject Block(Transform parent, string name, Vector3 min, Vector3 max, Material material,
+            PhysicsMaterial physics)
+        {
+            return Box(parent, name, (min + max) / 2f, max - min, material, physics);
+        }
+
+        /// <summary>
+        /// 動かない箱。Static にし、焼き込みまでの間は影を落とさない(影はボールとピンだけ)。
+        /// </summary>
         private static GameObject Box(Transform parent, string name, Vector3 position, Vector3 size, Material material,
             PhysicsMaterial physics)
         {
             GameObject box = SceneBuildUtility.CreatePrimitive(name, PrimitiveType.Cube, position, size, material, true);
-            box.transform.SetParent(parent, true);
             if (physics != null)
             {
                 box.GetComponent<Collider>().sharedMaterial = physics;
             }
 
+            MakeStatic(box, parent);
             return box;
+        }
+
+        private static void MakeStatic(GameObject go, Transform parent)
+        {
+            go.transform.SetParent(parent, true);
+            go.isStatic = true;
+            var renderer = go.GetComponent<Renderer>();
+            if (renderer != null)
+            {
+                renderer.shadowCastingMode = ShadowCastingMode.Off;
+            }
         }
 
         /// <summary>

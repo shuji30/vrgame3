@@ -27,7 +27,8 @@ namespace VRGame3.Common.EditorTools
         /// サンプルの XR Origin を置き、トリガーで掴む設定とトラックパッドの移動に差し替える。
         /// うまくいかなかった点を返す。
         /// </summary>
-        public static List<string> SetUpXROrigin(Material arcMaterial, Material reticleMaterial, Vector3 position, Quaternion rotation)
+        public static List<string> SetUpXROrigin(Material arcMaterial, Material reticleMaterial, Vector3 position, Quaternion rotation,
+            bool requireTeleportArea = false)
         {
             var warnings = new List<string>();
             var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(XROriginPrefabPath);
@@ -100,14 +101,15 @@ namespace VRGame3.Common.EditorTools
                     continue;
                 }
 
-                AddTrackpadLocomotion(controller, xrOrigin, controllerName.StartsWith("Left"), arcMaterial, reticleMaterial);
+                AddTrackpadLocomotion(controller, xrOrigin, controllerName.StartsWith("Left"), arcMaterial, reticleMaterial,
+                    requireTeleportArea);
             }
 
             return warnings;
         }
 
         private static void AddTrackpadLocomotion(Transform controller, Unity.XR.CoreUtils.XROrigin xrOrigin,
-            bool isLeft, Material arcMaterial, Material reticleMaterial)
+            bool isLeft, Material arcMaterial, Material reticleMaterial, bool requireTeleportArea)
         {
             var arcObject = new GameObject("テレポートの放物線");
             arcObject.transform.SetParent(controller, false);
@@ -136,6 +138,7 @@ namespace VRGame3.Common.EditorTools
             so.FindProperty("xrOrigin").objectReferenceValue = xrOrigin;
             so.FindProperty("arcLine").objectReferenceValue = line;
             so.FindProperty("reticle").objectReferenceValue = reticle.transform;
+            so.FindProperty("requireTeleportArea").boolValue = requireTeleportArea;
             so.ApplyModifiedPropertiesWithoutUndo();
         }
 
