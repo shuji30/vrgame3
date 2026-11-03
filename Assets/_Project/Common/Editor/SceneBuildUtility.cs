@@ -231,15 +231,26 @@ namespace VRGame3.Common.EditorTools
             AssetDatabase.CreateFolder(parent, System.IO.Path.GetFileName(path));
         }
 
-        public static void AddSceneToBuildSettings(string path)
+        /// <summary>
+        /// シーンを Build Settings に入れる。makeFirst が true なら先頭(起動して最初に入るシーン)にする。
+        /// </summary>
+        public static void AddSceneToBuildSettings(string path, bool makeFirst = false)
         {
             List<EditorBuildSettingsScene> scenes = EditorBuildSettings.scenes.ToList();
-            if (scenes.Any(s => s.path == path))
+            int index = scenes.FindIndex(s => s.path == path);
+            if (index >= 0 && !makeFirst)
             {
                 return;
             }
 
-            scenes.Insert(0, new EditorBuildSettingsScene(path, true));
+            if (index >= 0)
+            {
+                scenes.RemoveAt(index);
+            }
+
+            // 先頭はハブにするので、ハブ以外は2番目以降へ足す
+            int insertAt = makeFirst || scenes.Count == 0 ? 0 : scenes.Count;
+            scenes.Insert(insertAt, new EditorBuildSettingsScene(path, true));
             EditorBuildSettings.scenes = scenes.ToArray();
         }
     }

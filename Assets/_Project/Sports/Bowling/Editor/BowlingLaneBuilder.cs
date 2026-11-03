@@ -176,6 +176,19 @@ namespace VRGame3.Sports.Bowling.EditorTools
                 warnings.Add(panelWarning);
             }
 
+            // シーン切り替えのフェードと、メニューボタンのメニュー・設定パネル(M2)
+            string faderWarning = CommonSceneBuilder.AddFader();
+            if (faderWarning != null)
+            {
+                warnings.Add(faderWarning);
+            }
+
+            string menuWarning = CommonSceneBuilder.AddMenuAndSettings(root.transform, false, out _);
+            if (menuWarning != null)
+            {
+                warnings.Add(menuWarning);
+            }
+
             EditorSceneManager.SaveScene(scene, ScenePath);
             SceneBuildUtility.AddSceneToBuildSettings(ScenePath);
 

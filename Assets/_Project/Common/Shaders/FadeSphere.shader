@@ -4,7 +4,7 @@ Shader "VRGame3/FadeSphere"
 {
     Properties
     {
-        _Color ("Color", Color) = (0.11, 0.1, 0.18, 1)
+        _Color ("Color", Color) = (0.165, 0.149, 0.251, 1)
     }
 
     SubShader

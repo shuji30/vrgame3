@@ -1,0 +1,257 @@
+using TMPro;
+using UnityEditor;
+using UnityEngine;
+using UnityEngine.Rendering;
+using UnityEngine.UI;
+
+namespace VRGame3.Common.EditorTools
+{
+    /// <summary>
+    /// どのシーン(ハブ・各会場)にも置く共通の物を組み立てるエディタ処理。
+    /// ・シーン切り替えのフェード(docs/art-direction.md 7.4)
+    /// ・メニューボタンのメニューと確認(6.5)、共通の設定パネル(6.6)
+    /// ・ランクのメダル(6.8)
+    /// XR Origin を置いたあとに呼ぶ。
+    /// </summary>
+    public static class CommonSceneBuilder
+    {
+        private const string MaterialFolder = "Assets/_Project/Art/Materials/Common";
+        private const string FadeShaderName = "VRGame3/FadeSphere";
+
+        /// <summary>メインカメラの子にフェード用の球を付ける。失敗したときは理由を返す。</summary>
+        public static string AddFader()
+        {
+            Camera camera = Camera.main;
+            if (camera == null)
+            {
+                return "メインカメラが見つからないので、シーン切り替えのフェードを付けませんでした";
+            }
+
+            Shader shader = Shader.Find(FadeShaderName);
+            if (shader == null)
+            {
+                return $"シェーダー {FadeShaderName} が見つからないので、フェードを付けませんでした";
+            }
+
+            SceneBuildUtility.EnsureFolder(MaterialFolder);
+            string path = $"{MaterialFolder}/C_Fade.mat";
+            var material = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (material == null)
+            {
+                material = new Material(shader);
+                AssetDatabase.CreateAsset(material, path);
+            }
+
+            GameObject sphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            sphere.name = "フェード";
+            Object.DestroyImmediate(sphere.GetComponent<Collider>());
+            sphere.transform.SetParent(camera.transform, false);
+            // 半径 0.3m(カメラの手前の切り取り距離より外、手やコントローラーより内側)
+            sphere.transform.localScale = Vector3.one * 0.6f;
+            var renderer = sphere.GetComponent<Renderer>();
+            renderer.sharedMaterial = material;
+            renderer.shadowCastingMode = ShadowCastingMode.Off;
+            renderer.receiveShadows = false;
+            renderer.enabled = false;
+
+            var fader = sphere.AddComponent<ScreenFader>();
+            var so = new SerializedObject(fader);
+            so.FindProperty("sphere").objectReferenceValue = renderer;
+            so.ApplyModifiedPropertiesWithoutUndo();
+            return null;
+        }
+
+        /// <summary>
+        /// メニューと設定パネルを作る。inHub が true なら「ハブへもどる」を置かない。失敗したときは理由を返す。
+        /// </summary>
+        public static string AddMenuAndSettings(Transform parent, bool inHub, out SettingsPanel settingsPanel)
+        {
+            settingsPanel = null;
+            TMP_FontAsset font = UIBuildUtility.GetOrCreateFontAsset();
+            if (font == null)
+            {
+                return $"日本語フォントが見つかりません({UIBuildUtility.FontPath})。メニューは作りませんでした";
+            }
+
+            UIBuildUtility.EnsureEventSystem();
+            var root = new GameObject("メニューと設定");
+            root.transform.SetParent(parent, false);
+
+            settingsPanel = BuildSettingsPanel(root.transform, font);
+            BuildMenu(root.transform, font, inHub, settingsPanel);
+            return null;
+        }
+
+        private static void BuildMenu(Transform parent, TMP_FontAsset font, bool inHub, SettingsPanel settingsPanel)
+        {
+            // GameMenu はいつも有効な物に付け、パネル(Canvas)は子にして表示を切り替える
+            var holder = new GameObject("メニュー");
+            holder.transform.SetParent(parent, false);
+            var menu = holder.AddComponent<GameMenu>();
+
+            GameObject canvas = UIBuildUtility.CreateCanvas(holder.transform, "メニューのパネル", new Vector2(700f, 520f),
+                Color.clear);
+            canvas.transform.position = new Vector3(0f, 1.45f, 1f);
+
+            // つづける / せってい / ハブへもどる(6.5。ハブでは「ハブへもどる」がないので低くする)
+            Vector2 size = inHub ? new Vector2(600f, 400f) : new Vector2(600f, 520f);
+            GameObject main = UIBuildUtility.Page(canvas.transform, "メニュー", size, UIBuildUtility.Background);
+            Transform m = main.transform;
+            float top = inHub ? 140f : 200f;
+            UIBuildUtility.Label(m, "見出し", "メニュー", font, 52, new Vector2(0f, top), new Vector2(560f, 70f),
+                UIBuildUtility.TextLight);
+            UIBuildUtility.PrimaryButton(m, "つづける", "つづける", font, 44, new Vector2(0f, top - 120f),
+                new Vector2(440f, 96f), menu.Close);
+            UIBuildUtility.NormalButton(m, "せってい", "せってい", font, 44, new Vector2(0f, top - 240f),
+                new Vector2(440f, 96f), menu.OpenSettings);
+            GameObject hubButton = null;
+            if (!inHub)
+            {
+                (Image hubImage, _) = UIBuildUtility.NormalButton(m, "ハブへもどる", "ハブへもどる", font, 44,
+                    new Vector2(0f, top - 360f), new Vector2(440f, 96f), menu.RequestHub);
+                hubButton = hubImage.gameObject;
+            }
+
+            // ゲームの途中で「ハブへもどる」を押したときの確認
+            GameObject confirm = UIBuildUtility.Page(canvas.transform, "確認", new Vector2(700f, 420f), UIBuildUtility.Background);
+            Transform cf = confirm.transform;
+            UIBuildUtility.Label(cf, "文1", "ゲームのとちゅうです。", font, 40, new Vector2(0f, 110f), new Vector2(660f, 56f),
+                UIBuildUtility.TextLight);
+            UIBuildUtility.Label(cf, "文2", "ハブへもどりますか?", font, 40, new Vector2(0f, 60f), new Vector2(660f, 56f),
+                UIBuildUtility.TextLight);
+            UIBuildUtility.Label(cf, "補足", "スコアは記録されません", font, 30, new Vector2(0f, -10f), new Vector2(660f, 44f),
+                UIBuildUtility.TextSub);
+            UIBuildUtility.NormalButton(cf, "もどる", "もどる", font, 40, new Vector2(-160f, -130f), new Vector2(280f, 96f),
+                menu.GoToHub);
+            UIBuildUtility.PrimaryButton(cf, "つづける", "つづける", font, 40, new Vector2(160f, -130f), new Vector2(280f, 96f),
+                menu.CancelHub);
+            confirm.SetActive(false);
+
+            var so = new SerializedObject(menu);
+            so.FindProperty("panelRoot").objectReferenceValue = canvas;
+            so.FindProperty("mainPage").objectReferenceValue = main;
+            so.FindProperty("confirmPage").objectReferenceValue = confirm;
+            so.FindProperty("hubButton").objectReferenceValue = hubButton;
+            so.FindProperty("settingsPanel").objectReferenceValue = settingsPanel;
+            so.ApplyModifiedPropertiesWithoutUndo();
+            canvas.SetActive(false);
+        }
+
+        private static SettingsPanel BuildSettingsPanel(Transform parent, TMP_FontAsset font)
+        {
+            var holder = new GameObject("設定");
+            holder.transform.SetParent(parent, false);
+            var panel = holder.AddComponent<SettingsPanel>();
+
+            // 6.6。連続移動・移動の速さ・休憩案内の行は M2 の順6・7 で足す
+            GameObject canvas = UIBuildUtility.CreateCanvas(holder.transform, "設定のパネル", new Vector2(800f, 860f),
+                UIBuildUtility.Background);
+            canvas.transform.position = new Vector3(0f, 1.45f, 1f);
+            Transform c = canvas.transform;
+            Color light = UIBuildUtility.TextLight;
+
+            UIBuildUtility.Label(c, "見出し", "せってい", font, 52, new Vector2(0f, 370f), new Vector2(760f, 70f), light);
+
+            UIBuildUtility.Label(c, "身長の見出し", "身長", font, 36, new Vector2(-270f, 250f), new Vector2(240f, 60f), light);
+            UIBuildUtility.NormalButton(c, "身長を下げる", "-", font, 48, new Vector2(-80f, 250f), new Vector2(100f, 76f),
+                panel.DecreaseHeight);
+            TMP_Text heightText = UIBuildUtility.Label(c, "身長の数字", "170 cm", font, 40, new Vector2(80f, 250f),
+                new Vector2(200f, 60f), light);
+            UIBuildUtility.NormalButton(c, "身長を上げる", "+", font, 48, new Vector2(240f, 250f), new Vector2(100f, 76f),
+                panel.IncreaseHeight);
+
+            UIBuildUtility.Label(c, "利き手の見出し", "利き手", font, 36, new Vector2(-270f, 140f), new Vector2(240f, 60f), light);
+            (Image leftImage, TMP_Text leftText) = UIBuildUtility.NormalButton(c, "左利き", "左", font, 38,
+                new Vector2(-40f, 140f), new Vector2(170f, 76f), panel.SelectLeftHand);
+            (Image rightImage, TMP_Text rightText) = UIBuildUtility.PrimaryButton(c, "右利き", "● 右", font, 38,
+                new Vector2(160f, 140f), new Vector2(170f, 76f), panel.SelectRightHand);
+
+            UIBuildUtility.PrimaryButton(c, "とじる", "とじる", font, 46, new Vector2(0f, -340f), new Vector2(340f, 96f),
+                panel.Close);
+
+            var so = new SerializedObject(panel);
+            so.FindProperty("panelRoot").objectReferenceValue = canvas;
+            so.FindProperty("heightText").objectReferenceValue = heightText;
+            so.FindProperty("leftButtonImage").objectReferenceValue = leftImage;
+            so.FindProperty("leftButtonText").objectReferenceValue = leftText;
+            so.FindProperty("rightButtonImage").objectReferenceValue = rightImage;
+            so.FindProperty("rightButtonText").objectReferenceValue = rightText;
+            so.ApplyModifiedPropertiesWithoutUndo();
+            canvas.SetActive(false);
+            return panel;
+        }
+
+        /// <summary>
+        /// ランクのメダル(6.8)。diameter はメダルの直径(px)。名前の文字はメダルの右に置く。
+        /// </summary>
+        public static RankMedal AddRankMedal(Transform parent, TMP_FontAsset font, Vector2 position, float diameter,
+            float nameFontSize)
+        {
+            Sprite circle = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/Knob.psd");
+
+            var holder = new GameObject("ランク", typeof(RectTransform));
+            holder.transform.SetParent(parent, false);
+            ((RectTransform)holder.transform).anchoredPosition = position;
+
+            float rimSize = diameter + diameter * 0.1f;
+            Image rim = Circle(holder.transform, "縁", circle, rimSize, Color.white);
+
+            // にじいろの帯:4つの扇形を 90° ずつ
+            var rainbow = new GameObject("にじいろの帯", typeof(RectTransform));
+            rainbow.transform.SetParent(holder.transform, false);
+            string[] bandColors = { "#FF7F6B", "#FFD24A", "#6CC36A", "#3AA7FF" };
+            for (int i = 0; i < 4; i++)
+            {
+                Image band = Circle(rainbow.transform, $"帯{i + 1}", circle, rimSize + diameter * 0.04f, Hex(bandColors[i]));
+                band.type = Image.Type.Filled;
+                band.fillMethod = Image.FillMethod.Radial360;
+                band.fillAmount = 0.25f;
+                band.transform.localRotation = Quaternion.Euler(0f, 0f, -90f * i);
+            }
+
+            rainbow.SetActive(false);
+
+            Image face = Circle(holder.transform, "メダル", circle, diameter, Color.white);
+
+            Image pearlImage = Circle(holder.transform, "しんじゅ", circle, diameter * 0.22f, Hex("#FFFDF7"));
+            ((RectTransform)pearlImage.transform).anchoredPosition = new Vector2(0f, diameter * 0.62f);
+            pearlImage.gameObject.SetActive(false);
+
+            TMP_Text stars = UIBuildUtility.Label(holder.transform, "星", "★", font, diameter * 0.28f, Vector2.zero,
+                new Vector2(diameter, diameter * 0.5f), UIBuildUtility.TextDark);
+            TMP_Text rankName = UIBuildUtility.Label(holder.transform, "名前", "かいがら", font, nameFontSize,
+                new Vector2(diameter * 0.6f + nameFontSize * 2.2f, 0f), new Vector2(nameFontSize * 4.4f, nameFontSize * 1.4f),
+                UIBuildUtility.TextLight);
+            rankName.alignment = TextAlignmentOptions.Left;
+
+            var medal = holder.AddComponent<RankMedal>();
+            var so = new SerializedObject(medal);
+            so.FindProperty("face").objectReferenceValue = face;
+            so.FindProperty("rim").objectReferenceValue = rim;
+            so.FindProperty("stars").objectReferenceValue = stars;
+            so.FindProperty("rankName").objectReferenceValue = rankName;
+            so.FindProperty("pearl").objectReferenceValue = pearlImage.gameObject;
+            so.FindProperty("rainbow").objectReferenceValue = rainbow;
+            so.ApplyModifiedPropertiesWithoutUndo();
+            return medal;
+        }
+
+        private static Image Circle(Transform parent, string name, Sprite sprite, float size, Color color)
+        {
+            var go = new GameObject(name, typeof(RectTransform));
+            go.transform.SetParent(parent, false);
+            ((RectTransform)go.transform).sizeDelta = new Vector2(size, size);
+            var image = go.AddComponent<Image>();
+            image.sprite = sprite;
+            image.color = color;
+            image.raycastTarget = false;
+            return image;
+        }
+
+        public static Color Hex(string hex)
+        {
+            ColorUtility.TryParseHtmlString(hex, out Color color);
+            return color;
+        }
+    }
+}

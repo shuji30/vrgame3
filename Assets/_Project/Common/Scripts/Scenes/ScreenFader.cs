@@ -13,8 +13,8 @@ namespace VRGame3.Common
         [Tooltip("カメラを囲む球(内側に色を塗る)")]
         [SerializeField] private Renderer sphere;
 
-        [Tooltip("覆う色")]
-        [SerializeField] private Color color = new Color32(0x1C, 0x1A, 0x2E, 0xFF);
+        [Tooltip("覆う色(docs/art-direction.md 7.4。純黒にしない)")]
+        [SerializeField] private Color color = new Color32(0x2A, 0x26, 0x40, 0xFF);
 
         [Tooltip("暗くする・明るくするのにかける秒数")]
         [SerializeField] private float fadeTime = 0.3f;
@@ -65,7 +65,7 @@ namespace VRGame3.Common
             float start = alpha;
             for (float t = 0f; t < fadeTime; t += Time.unscaledDeltaTime)
             {
-                SetAlpha(Mathf.Lerp(start, target, t / fadeTime));
+                SetAlpha(Mathf.Lerp(start, target, Mathf.SmoothStep(0f, 1f, t / fadeTime)));
                 yield return null;
             }
 
