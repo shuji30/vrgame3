@@ -112,7 +112,9 @@ namespace VRGame3.Sports.TableTennis.EditorTools
             SetControllers(so, warnings);
             so.ApplyModifiedPropertiesWithoutUndo();
 
-            BuildStartPanel(root.transform, font, game);
+            ChoicePanel choicePanel = CommonSceneBuilder.AddChoicePanel(root.transform, new Vector3(0f, 1.4f, -0.95f), Eye);
+            GameObject aimTargets = BuildAimTargets(table);
+            BuildStartPanel(root.transform, font, game, choicePanel, aimTargets);
             BuildFeedback(root.transform, game);
             BuildAmbient(root.transform);
 
@@ -437,7 +439,27 @@ namespace VRGame3.Sports.TableTennis.EditorTools
         }
 
         /// <summary>「はじめに」パネル(docs/art-direction.md 6.10 の卓球の行。1000 × 940)。モードの行(+150)は M3 の順5で足す。</summary>
-        private static void BuildStartPanel(Transform root, TMP_FontAsset font, TableTennisGame game)
+        /// <summary>チャレンジ「ねらい打ち」の円(CPU 側のコートの左右の隅、直径 0.5m)。台の子にして高さに付いて行く。</summary>
+        private static GameObject BuildAimTargets(Transform table)
+        {
+            var group = new GameObject("ねらい打ちの円");
+            group.transform.SetParent(table, false);
+            float x = TableWidth / 2f - 0.3f;
+            float z = TableLength / 2f - 0.3f;
+            foreach (float side in new[] { -1f, 1f })
+            {
+                Part(group.transform, "円の縁", PrimitiveType.Cylinder, new Vector3(side * x, 0.002f, z), new Vector3(0.53f, 0.001f, 0.53f),
+                    Mat("T_Orange", "#FF8A3D"));
+                Part(group.transform, "円", PrimitiveType.Cylinder, new Vector3(side * x, 0.003f, z), new Vector3(0.5f, 0.001f, 0.5f),
+                    Mat("T_Yellow", "#FFD24A"));
+            }
+
+            group.SetActive(false);
+            return group.gameObject;
+        }
+
+        private static void BuildStartPanel(Transform root, TMP_FontAsset font, TableTennisGame game, ChoicePanel choicePanel,
+            GameObject aimTargets)
         {
             UIBuildUtility.EnsureEventSystem();
             var holder = new GameObject("はじめに");
@@ -450,7 +472,7 @@ namespace VRGame3.Sports.TableTennis.EditorTools
             Transform c = canvas.transform;
             Color light = UIBuildUtility.TextLight;
 
-            UIBuildUtility.Label(c, "見出し", "はじめに", font, 52, new Vector2(0f, 410f), new Vector2(960f, 70f), light);
+            TMP_Text title = UIBuildUtility.Label(c, "見出し", "はじめに", font, 52, new Vector2(0f, 410f), new Vector2(960f, 70f), light);
             UIBuildUtility.Label(c, "案内1", "まわりに人や物がないか確かめてください", font, 30, new Vector2(0f, 340f), new Vector2(960f, 44f), light);
             UIBuildUtility.Label(c, "案内2", "コントローラーのストラップを手首に通してください", font, 30, new Vector2(0f, 293f), new Vector2(960f, 44f), light);
             UIBuildUtility.Label(c, "案内3", "台はほんものではありません。手をついたり、もたれたりしないでください", font, 26,
@@ -468,10 +490,6 @@ namespace VRGame3.Sports.TableTennis.EditorTools
             }
 
             Vector2 wide = new Vector2(220f, 76f);
-            UIBuildUtility.Label(c, "つよさの見出し", "つよさ", font, 36, new Vector2(-360f, 45f), new Vector2(260f, 60f), light);
-            Choice(TTStartPanel.Choice.Easy, "やさしい", -110f, 45f, wide, 28, panel.Easy);
-            Choice(TTStartPanel.Choice.Normal, "ふつう", 125f, 45f, wide, 28, panel.Normal);
-            Choice(TTStartPanel.Choice.Hard, "つよい", 360f, 45f, wide, 28, panel.Hard);
 
             UIBuildUtility.Label(c, "補助の見出し", "入りやすさの補助", font, 28, new Vector2(-360f, -60f), new Vector2(260f, 60f), light);
             Choice(TTStartPanel.Choice.AssistOn, "オン", -110f, -60f, wide, 34, panel.AssistOn);
@@ -486,15 +504,27 @@ namespace VRGame3.Sports.TableTennis.EditorTools
             Choice(TTStartPanel.Choice.LeftHand, "左", -110f, -270f, wide, 38, panel.SelectLeftHand);
             Choice(TTStartPanel.Choice.RightHand, "右", 125f, -270f, wide, 38, panel.SelectRightHand);
 
-            UIBuildUtility.PrimaryButton(c, "はじめる", "はじめる", font, 46, new Vector2(0f, -390f), new Vector2(340f, 96f), panel.StartGame);
+            (_, TMP_Text startLabel) = UIBuildUtility.PrimaryButton(c, "はじめる", "はじめる", font, 46, new Vector2(0f, -390f),
+                new Vector2(340f, 96f), panel.StartGame);
+
+            // モード(CPU と / チャレンジ)と強さの行(6.10)
+            ModeSelector selector = CommonSceneBuilder.AddModeRows(holder, c, font, SportIds.TableTennis,
+                new[] { SportMode.Cpu, SportMode.Challenge }, 150f, 45f, startLabel, title);
 
             var so = new SerializedObject(panel);
             so.FindProperty("game").objectReferenceValue = game;
+            so.FindProperty("modeSelector").objectReferenceValue = selector;
             so.FindProperty("panelRoot").objectReferenceValue = canvas;
             so.FindProperty("heightText").objectReferenceValue = height;
             SetArray(so.FindProperty("choiceImages"), images);
             SetArray(so.FindProperty("choiceTexts"), texts);
             so.ApplyModifiedPropertiesWithoutUndo();
+
+            var gameSo = new SerializedObject(game);
+            gameSo.FindProperty("modeSelector").objectReferenceValue = selector;
+            gameSo.FindProperty("choicePanel").objectReferenceValue = choicePanel;
+            gameSo.FindProperty("aimTargets").objectReferenceValue = aimTargets;
+            gameSo.ApplyModifiedPropertiesWithoutUndo();
         }
 
         // ---------------------------------------------------------------- 音

@@ -71,6 +71,7 @@ namespace VRGame3.Sports.TableTennis
         [SerializeField] private float standBack = 0.55f;
 
         private int level = 1;
+        private bool noMiss;
         private float baseY;
         private bool planned;
         private float planStart;
@@ -81,6 +82,7 @@ namespace VRGame3.Sports.TableTennis
         private float reactTimer;
         private float reactJump;
         private bool serving;
+        private bool gentleServe;
         private float serveHitTime;
 
         private void Awake()
@@ -139,6 +141,12 @@ namespace VRGame3.Sports.TableTennis
         private PingPongPhysics.Table Table => ball.Table;
 
         private float StandZ => Table.Center.z + Table.Length / 2f + standBack;
+
+        /// <summary>ミスをしないようにする(チャレンジの「ラリー10回」)。</summary>
+        public void SetNoMiss(bool value)
+        {
+            noMiss = value;
+        }
 
         /// <summary>構えの位置に戻す(1点の始め)。</summary>
         public void ResetStance()
@@ -213,13 +221,14 @@ namespace VRGame3.Sports.TableTennis
             float canMove = Mathf.Max(0f, bestTime - l.reaction) * l.moveSpeed;
             bool reachable = Mathf.Abs(hitPoint.x - body.position.x - handOffsetX) <= canMove + l.reach;
             float missChance = l.missRate + (incoming >= 10f ? l.fastMissBonus : 0f);
-            miss = !reachable ? Miss.Whiff : Random.value < missChance ? PickMiss() : Miss.None;
+            miss = !reachable && !noMiss ? Miss.Whiff : !noMiss && Random.value < missChance ? PickMiss() : Miss.None;
             planned = true;
         }
 
-        /// <summary>CPU のサーブ。投げ上げてから打つ。</summary>
-        public void Serve()
+        /// <summary>CPU のサーブ。投げ上げてから打つ。gentle なら球出し(遅く、真ん中へ)。</summary>
+        public void Serve(bool gentle = false)
         {
+            gentleServe = gentle;
             ResetStance();
             Vector3 from = body.TransformPoint(tossRest);
             ball.Launch(from, new Vector3(0f, 2.6f, 0f));
@@ -244,8 +253,10 @@ namespace VRGame3.Sports.TableTennis
                 serving = false;
                 if (ball.IsFlying)
                 {
-                    Vector3 target = PlayerCourtTarget(l, true);
-                    float speed = Random.Range(l.serveSpeed.x, l.serveSpeed.y);
+                    Vector3 target = gentleServe
+                        ? new Vector3(Table.Center.x + Random.Range(-0.15f, 0.15f), Table.Top, Table.Center.z - 0.85f)
+                        : PlayerCourtTarget(l, true);
+                    float speed = gentleServe ? 4f : Random.Range(l.serveSpeed.x, l.serveSpeed.y);
                     PingPongPhysics.SolveShot(ball.Position, target, speed, ball.Physics, Table, out Vector3 v);
                     ball.Launch(ball.Position, v);
                     Hit?.Invoke();
@@ -279,7 +290,7 @@ namespace VRGame3.Sports.TableTennis
 
             // 実際のボールが打点の近くにあるか(届かなければ空振り)
             Vector3 hand = body.TransformPoint(handRest);
-            if (Mathf.Abs(ball.Position.x - hand.x) > l.reach || Table.SideOf(ball.Position) != TTSide.Cpu)
+            if ((!noMiss && Mathf.Abs(ball.Position.x - hand.x) > l.reach) || Table.SideOf(ball.Position) != TTSide.Cpu)
             {
                 return;
             }

@@ -69,6 +69,35 @@ namespace VRGame3.Sports.TableTennis
             }
         }
 
+        /// <summary>チャレンジ中の表示(課題名・進み具合・残り)。点の欄を使う。</summary>
+        public void ShowChallenge(string title, string progress, string left)
+        {
+            if (levelText != null)
+            {
+                levelText.text = title;
+            }
+
+            if (playerPoints != null)
+            {
+                playerPoints.text = progress;
+            }
+
+            if (cpuPoints != null)
+            {
+                cpuPoints.text = left;
+            }
+
+            if (playerServeMark != null)
+            {
+                playerServeMark.SetActive(false);
+            }
+
+            if (cpuServeMark != null)
+            {
+                cpuServeMark.SetActive(false);
+            }
+        }
+
         /// <summary>決着の理由を少しのあいだ出す。</summary>
         public void ShowReason(string text)
         {

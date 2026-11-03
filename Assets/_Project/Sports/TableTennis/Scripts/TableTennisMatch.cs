@@ -8,10 +8,13 @@ namespace VRGame3.Sports.TableTennis
     public class TableTennisMatch
     {
         private readonly int target;
+        private readonly bool deuce;
 
-        public TableTennisMatch(int pointsToWin = 11, TTSide firstServer = TTSide.Player)
+        /// <param name="allowDeuce">false なら先取点で必ず決着(チャレンジの5点マッチ)</param>
+        public TableTennisMatch(int pointsToWin = 11, TTSide firstServer = TTSide.Player, bool allowDeuce = true)
         {
             target = pointsToWin;
+            deuce = allowDeuce;
             FirstServer = firstServer;
             Server = firstServer;
         }
@@ -24,7 +27,7 @@ namespace VRGame3.Sports.TableTennis
         public TTSide Winner { get; private set; }
 
         /// <summary>デュースに入っているか。</summary>
-        public bool IsDeuce => PlayerPoints >= target - 1 && CpuPoints >= target - 1;
+        public bool IsDeuce => deuce && PlayerPoints >= target - 1 && CpuPoints >= target - 1;
 
         public int PointsOf(TTSide side) => side == TTSide.Player ? PlayerPoints : CpuPoints;
 
@@ -46,7 +49,7 @@ namespace VRGame3.Sports.TableTennis
             }
 
             int lead = PlayerPoints - CpuPoints;
-            if ((PlayerPoints >= target || CpuPoints >= target) && (lead >= 2 || lead <= -2))
+            if ((PlayerPoints >= target || CpuPoints >= target) && (!deuce || lead >= 2 || lead <= -2))
             {
                 IsOver = true;
                 Winner = lead > 0 ? TTSide.Player : TTSide.Cpu;

@@ -88,6 +88,29 @@ namespace VRGame3.Sports.TableTennis
         [Tooltip("これ以上決着しないボールは迷子(秒)")]
         [SerializeField] private float strayTime = 10f;
 
+        [Header("モード(M3)")]
+        [Tooltip("「はじめに」パネルのモードの行")]
+        [SerializeField] private ModeSelector modeSelector;
+
+        [Tooltip("チャレンジに使うパネル")]
+        [SerializeField] private ChoicePanel choicePanel;
+
+        [Tooltip("ねらい打ちの円(台の子。このチャレンジの間だけ出す)")]
+        [SerializeField] private GameObject aimTargets;
+
+        [Header("チャレンジ(docs/plan.md「チャレンジ」)")]
+        [Tooltip("ラリー10回:続ける往復の数・試せる回数")]
+        [SerializeField] private int rallyNeed = 10;
+        [SerializeField] private int rallyAttempts = 3;
+
+        [Tooltip("ねらい打ち:球の数・入れる数・円の半径(m)")]
+        [SerializeField] private int aimBalls = 10;
+        [SerializeField] private int aimNeed = 3;
+        [SerializeField] private float aimRadius = 0.25f;
+
+        [Tooltip("5点マッチ:先取点")]
+        [SerializeField] private int shortMatchPoints = 5;
+
         [Header("入りやすさの補助")]
         [Tooltip("直す向きの最大(度)")]
         [SerializeField] private float assistMaxAngle = 6f;
@@ -105,6 +128,10 @@ namespace VRGame3.Sports.TableTennis
         private Transform serveHand;
         private float pointTimer;
         private bool rallyStarted;
+        private string challengeId;
+        private int challengeCount;
+        private int challengeTries;
+        private bool aimChecked;
 
         /// <summary>1点が決まったとき(得点した側, 理由)。</summary>
         public event Action<TTSide, string> PointScored;
@@ -161,15 +188,70 @@ namespace VRGame3.Sports.TableTennis
         /// <summary>新しいゲームを始める(「はじめに」パネルの「はじめる」から呼ぶ)。</summary>
         public void StartGame()
         {
+            challengeId = null;
+            BeginMatch(pointsToWin, true, SaveStore.Settings.cpuLevel);
+        }
+
+        private void BeginMatch(int points, bool deuce, int level)
+        {
             StopAllCoroutines();
-            match = new TableTennisMatch(pointsToWin);
-            cpu.SetLevel(SaveStore.Settings.cpuLevel);
+            match = new TableTennisMatch(points, TTSide.Player, deuce);
+            cpu.SetLevel(level);
+            cpu.SetNoMiss(challengeId == "tabletennis.rally");
+            if (aimTargets != null)
+            {
+                aimTargets.SetActive(challengeId == "tabletennis.aim");
+            }
+
             ApplyTableHeight();
             EquipHands();
             rallyStarted = false;
             GameSession.InProgress = false;
-            scoreBoard.Refresh(match, $"{cpu.Level.label} {cpu.Level.marks}");
+            RefreshBoard();
             NextServe();
+        }
+
+        /// <summary>チャレンジの一覧を出す(「はじめに」パネルの「かだいをえらぶ」から呼ぶ)。</summary>
+        public void ShowChallengeList()
+        {
+            ModeFlow.ShowChallengeList(choicePanel, SportIds.TableTennis, StartChallenge, BackToStart);
+        }
+
+        /// <summary>チャレンジを始める。</summary>
+        public void StartChallenge(string id)
+        {
+            challengeId = id;
+            challengeCount = 0;
+            challengeTries = 0;
+            switch (id)
+            {
+                case "tabletennis.rally":
+                    BeginMatch(999, true, 0);
+                    break;
+                case "tabletennis.aim":
+                    BeginMatch(999, true, 0);
+                    break;
+                default:
+                    BeginMatch(shortMatchPoints, false, 1);
+                    break;
+            }
+        }
+
+        private void RefreshBoard()
+        {
+            string label = $"{cpu.Level.label} {cpu.Level.marks}";
+            switch (challengeId)
+            {
+                case "tabletennis.rally":
+                    scoreBoard.ShowChallenge("ラリー10回", $"{challengeCount}/{rallyNeed}", $"のこり {rallyAttempts - challengeTries}回");
+                    break;
+                case "tabletennis.aim":
+                    scoreBoard.ShowChallenge("ねらい打ち", $"{challengeCount}/{aimNeed}", $"のこり {aimBalls - challengeTries}球");
+                    break;
+                default:
+                    scoreBoard.Refresh(match, challengeId == null ? label : $"5点マッチ  {label}");
+                    break;
+            }
         }
 
         private void BackToStart()
@@ -196,9 +278,14 @@ namespace VRGame3.Sports.TableTennis
         {
             ball.Hide();
             cpu.ResetStance();
-            judge = new RallyJudge(match.Server);
-            scoreBoard.Refresh(match, $"{cpu.Level.label} {cpu.Level.marks}");
-            if (match.Server == TTSide.Player)
+            // ラリー10回はいつもプレイヤーのサーブ、ねらい打ちはいつも CPU の球出し
+            TTSide server = challengeId == "tabletennis.rally" ? TTSide.Player
+                : challengeId == "tabletennis.aim" ? TTSide.Cpu
+                : match.Server;
+            judge = new RallyJudge(server);
+            aimChecked = false;
+            RefreshBoard();
+            if (server == TTSide.Player)
             {
                 state = State.PlayerServe;
             }
@@ -215,7 +302,7 @@ namespace VRGame3.Sports.TableTennis
             if (state == State.CpuServe && !InputGate.GrabBlocked)
             {
                 state = State.Rally;
-                cpu.Serve();
+                cpu.Serve(challengeId == "tabletennis.aim");
             }
             else if (state == State.CpuServe)
             {
@@ -320,12 +407,22 @@ namespace VRGame3.Sports.TableTennis
                         rallyStarted = true;
                         GameSession.InProgress = true;
                         ApplyAssist();
-                        cpu.PlanReturn();
+                        // ねらい打ちでは CPU は返さない(入ったかどうかだけを見る)
+                        if (challengeId != "tabletennis.aim")
+                        {
+                            cpu.PlanReturn();
+                        }
                     }
 
                     break;
                 case PingPongPhysics.EventKind.Table:
+                    bool firstLanding = judge.LastHitter == TTSide.Player && e.Side == TTSide.Cpu && !judge.LandedOnReceiver;
                     point = judge.OnBounce(e.Side);
+                    if (firstLanding && OnPlayerShotLanded(e.Point))
+                    {
+                        return;
+                    }
+
                     break;
                 case PingPongPhysics.EventKind.Floor:
                     point = judge.OnFloor();
@@ -368,12 +465,109 @@ namespace VRGame3.Sports.TableTennis
             }
         }
 
+        /// <summary>
+        /// プレイヤーの打った球が相手コートに入ったとき(チャレンジの数え方)。true ならこの1球の扱いをここで終える。
+        /// </summary>
+        private bool OnPlayerShotLanded(Vector3 at)
+        {
+            if (challengeId == "tabletennis.rally")
+            {
+                challengeCount++;
+                RefreshBoard();
+                if (challengeCount >= rallyNeed)
+                {
+                    cpu.Cancel();
+                    StartCoroutine(FinishChallenge(true));
+                    return true;
+                }
+            }
+            else if (challengeId == "tabletennis.aim" && !aimChecked)
+            {
+                aimChecked = true;
+                PingPongPhysics.Table t = ball.Table;
+                float cornerX = t.Width / 2f - 0.3f;
+                float cornerZ = t.Center.z + t.Length / 2f - 0.3f;
+                bool inside = (new Vector2(at.x - (t.Center.x - cornerX), at.z - cornerZ).magnitude <= aimRadius) ||
+                              (new Vector2(at.x - (t.Center.x + cornerX), at.z - cornerZ).magnitude <= aimRadius);
+                challengeCount += inside ? 1 : 0;
+                scoreBoard.ShowReason(inside ? "ナイス!" : "おしい");
+                EndFeed();
+                return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>ねらい打ちの1球が終わった。</summary>
+        private void EndFeed()
+        {
+            challengeTries++;
+            RefreshBoard();
+            RestReminder.AtBreak();
+            if (challengeCount >= aimNeed || challengeTries >= aimBalls)
+            {
+                state = State.GameOver;
+                StartCoroutine(FinishChallenge(challengeCount >= aimNeed));
+                return;
+            }
+
+            state = State.PointOver;
+            pointTimer = pointPause;
+        }
+
+        private IEnumerator FinishChallenge(bool cleared)
+        {
+            state = State.GameOver;
+            string id = challengeId;
+            string detail = id == "tabletennis.rally" ? $"ラリー {challengeCount}回"
+                : id == "tabletennis.aim" ? $"{challengeCount}球 入った"
+                : $"{match.PlayerPoints} - {match.CpuPoints}";
+            yield return new WaitForSeconds(pointPause);
+            ball.Hide();
+            racket.Unequip();
+            serveTrigger?.Dispose();
+            serveTrigger = null;
+            GameSession.InProgress = false;
+            if (aimTargets != null)
+            {
+                aimTargets.SetActive(false);
+            }
+
+            ModeFlow.ShowChallengeResult(choicePanel, id, cleared, detail, () => StartChallenge(id), ShowChallengeList);
+        }
+
         private void EndPoint(RallyJudge.Point point)
         {
             cpu.Cancel();
+            if (challengeId == "tabletennis.aim")
+            {
+                // 入らなかった球
+                scoreBoard.ShowReason(point.Reason);
+                EndFeed();
+                return;
+            }
+
+            if (challengeId == "tabletennis.rally")
+            {
+                // ラリーが切れた:回数を数えて、のこりがあれば最初から
+                challengeTries++;
+                scoreBoard.ShowReason($"{challengeCount}回で きれた");
+                RestReminder.AtBreak();
+                if (challengeTries >= rallyAttempts)
+                {
+                    StartCoroutine(FinishChallenge(false));
+                    return;
+                }
+
+                challengeCount = 0;
+                state = State.PointOver;
+                pointTimer = pointPause;
+                return;
+            }
+
             match.AddPoint(point.Winner);
             cpu.React(point.Winner == TTSide.Cpu);
-            scoreBoard.Refresh(match, $"{cpu.Level.label} {cpu.Level.marks}");
+            RefreshBoard();
             scoreBoard.ShowReason(point.Winner == TTSide.Player ? $"とくてん  {point.Reason}" : $"しってん  {point.Reason}");
             PointScored?.Invoke(point.Winner, point.Reason);
             state = State.PointOver;
@@ -402,6 +596,13 @@ namespace VRGame3.Sports.TableTennis
             serveTrigger = null;
 
             bool won = match.Winner == TTSide.Player;
+            if (challengeId != null)
+            {
+                // 5点マッチ:勝てばクリア(記録とポイントは動かさない)
+                StartCoroutine(FinishChallenge(won));
+                return;
+            }
+
             int score = Score(won);
             GameRecordResult result = SaveStore.RecordFinishedGame(SportIds.TableTennis, score);
             scoreBoard.ShowReason(won ? "かち!" : "まけ");
@@ -526,7 +727,7 @@ namespace VRGame3.Sports.TableTennis
             {
                 ApplyTableHeight();
                 cpu.SetLevel(SaveStore.Settings.cpuLevel);
-                scoreBoard.Refresh(match, $"{cpu.Level.label} {cpu.Level.marks}");
+                RefreshBoard();
             }
         }
     }
