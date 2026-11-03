@@ -23,7 +23,7 @@ Wii Sports Resort / Switch Sports 系の「誰でもすぐ遊べる」遊びや�
 
 ## 開発環境
 
-- エンジン: Unity 6(6000.6.5f1。正確なバージョンは ProjectSettings/ProjectVersion.txt を参照)
+- エンジン: Unity 6(6000.6.7f1。正確なバージョンは ProjectSettings/ProjectVersion.txt を参照)
 - XR: OpenXR(SteamVR ランタイム)+ XR Interaction Toolkit
 - 描画: URP
 - ヘッドセット: Pimax 8KX / Pimax シリーズ(SteamVR 経由)
