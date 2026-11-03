@@ -133,6 +133,15 @@ namespace VRGame3.Common
             if (rankUpText != null)
             {
                 rankUpText.SetActive(result.Points.RankedUp);
+                // ランクアップで新しいかざりが手に入ったら1行足す(docs/plan.md「見た目のご褒美」の知らせ)
+                var label = rankUpText.GetComponent<TMP_Text>();
+                string reward = result.Points.RankedUp ? RewardCatalog.NewlyUnlockedBy(result.SportId, result.Points.RankAfter) : null;
+                if (label != null)
+                {
+                    label.text = reward == null
+                        ? "ランクアップ!"
+                        : $"ランクアップ!  <size=60%>あたらしい {reward} が もらえた! ハブの きせかえで えらべます</size>";
+                }
             }
 
             StopAllCoroutines();

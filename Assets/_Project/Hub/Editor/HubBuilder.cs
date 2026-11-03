@@ -107,6 +107,10 @@ namespace VRGame3.Hub.EditorTools
                 BuildSettingsSign(root.transform, font, settings);
             }
 
+            // きせかえの看板(M4。せってい看板の反対側)
+            CosmeticPanel cosmetics = CosmeticBuilder.AddPanel(root.transform, font);
+            BuildSmallSign(root.transform, font, "きせかえ看板", "きせかえ", new Vector3(4.4f, 1.2f, 2f), cosmetics.Open);
+
             // はじめての案内と看板の札(M4 のてびき)
             var tutorial = root.AddComponent<HubTutorial>();
             var tutorialSo = new SerializedObject(tutorial);
@@ -482,6 +486,25 @@ namespace VRGame3.Hub.EditorTools
             canvas.transform.localRotation = Quaternion.identity;
             UIBuildUtility.NormalButton(canvas.transform, "せってい", "せってい", font, 200, Vector2.zero,
                 new Vector2(1100f, 400f), settings.Open);
+        }
+
+        /// <summary>小さな看板(柱1本・板・押せる文字)。</summary>
+        private static void BuildSmallSign(Transform root, TMP_FontAsset font, string name, string label, Vector3 center,
+            UnityEngine.Events.UnityAction onPress)
+        {
+            var sign = new GameObject(name);
+            sign.transform.SetParent(root, false);
+            sign.transform.position = center;
+            Vector3 away = center - Eye;
+            away.y = 0f;
+            sign.transform.rotation = Quaternion.LookRotation(away.normalized, Vector3.up);
+            LocalShape(sign.transform, "柱", PrimitiveType.Cylinder, new Vector3(0f, -center.y + 0.75f, 0.05f),
+                new Vector3(0.1f, 0.75f, 0.1f), Mat("H_WoodDark", "#8A5A3B"));
+            LocalShape(sign.transform, "板", PrimitiveType.Cube, Vector3.zero, new Vector3(1.3f, 0.6f, 0.06f), Mat("H_Wood", "#C98B55"));
+            GameObject canvas = UIBuildUtility.CreateCanvas(sign.transform, "文字", new Vector2(1200f, 500f), Color.clear);
+            canvas.transform.localPosition = new Vector3(0f, 0f, -0.035f);
+            canvas.transform.localRotation = Quaternion.identity;
+            UIBuildUtility.NormalButton(canvas.transform, label, label, font, 200, Vector2.zero, new Vector2(1100f, 400f), onPress);
         }
 
         private static void AddArrivalPoint(Transform root, string name, string fromScene, Vector3 position)

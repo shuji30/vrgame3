@@ -89,6 +89,9 @@ namespace VRGame3.Common.EditorTools
             // てびきの板(M4)
             AddTutorialBoard(root.transform);
 
+            // 見た目のご褒美(M4)を当てる
+            CosmeticBuilder.AddApplier(root.transform);
+
             // 時間帯(M4)。シーンに入った暗い間に当てる
             var time = new GameObject("時間帯");
             time.transform.SetParent(root.transform, false);

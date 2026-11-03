@@ -81,9 +81,14 @@ namespace VRGame3.Common
             Action other)
         {
             ChallengeCatalog.Entry entry = ChallengeCatalog.Find(id);
-            if (cleared)
+            if (cleared && SaveStore.MarkChallengeCleared(id))
             {
-                SaveStore.MarkChallengeCleared(id);
+                // クリアの数が 3・6・9 になったら、新しいリストバンドが手に入る
+                int count = SaveStore.Data.clearedChallenges.Count;
+                if (count % 3 == 0 && count <= 9)
+                {
+                    detail += $"\nあたらしい リストバンド {RewardCatalog.Name(RewardCatalog.Item.Wristband, count / 3)} が もらえた!";
+                }
             }
 
             panel.Show(cleared ? "クリア!" : "ざんねん", $"{entry?.Name}\n{detail}",

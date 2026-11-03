@@ -139,6 +139,7 @@ namespace VRGame3.Common
             SportRecord record = GetRecord(sportId);
             var result = new GameRecordResult
             {
+                SportId = sportId,
                 Score = score,
                 BestBefore = record.best,
                 NewBest = record.plays == 0 || score > record.best,
