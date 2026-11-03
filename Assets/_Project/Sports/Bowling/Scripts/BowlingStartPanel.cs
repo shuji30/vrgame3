@@ -2,13 +2,15 @@ using System.Collections;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using VRGame3.Common;
 
 namespace VRGame3.Sports.Bowling
 {
     /// <summary>
     /// 投げ始める前に出す「はじめに」パネル。周囲確認とストラップの案内を出し、身長と利き手を設定してから
     /// 「はじめる」を押すまで、ボールを掴めないようにする(企画書の快適性と安全設計、M1)。
-    /// 10フレームが終わると少し待ってからもう一度出し、次の人が設定し直せるようにする(設定の保存は M2)。
+    /// 10フレームが終わると少し待ってからもう一度出し、次の人が設定し直せるようにする。
+    /// 身長と利き手は保存した値(SaveStore)から始め、変えたらすぐ保存する。
     /// </summary>
     public class BowlingStartPanel : MonoBehaviour
     {
@@ -37,17 +39,8 @@ namespace VRGame3.Sports.Bowling
         [SerializeField] private TMP_Text rightButtonText;
 
         [Header("身長")]
-        [Tooltip("最初の身長(cm)")]
-        [SerializeField] private int heightCm = 170;
-
         [Tooltip("ボタン1回で変わる量(cm)")]
         [SerializeField] private int heightStep = 5;
-
-        [SerializeField] private int minHeightCm = 110;
-        [SerializeField] private int maxHeightCm = 200;
-
-        [Header("利き手")]
-        [SerializeField] private bool leftHanded;
 
         [Header("その他")]
         [Tooltip("10フレームが終わってから、パネルをもう一度出すまでの秒数")]
@@ -83,36 +76,38 @@ namespace VRGame3.Sports.Bowling
 
         private void Start()
         {
-            ApplySettings();
+            ApplySettings(false);
             Show();
         }
+
+        private static GameSettings Settings => SaveStore.Settings;
 
         /// <summary>身長を上げる(ボタンから呼ぶ)。</summary>
         public void IncreaseHeight()
         {
-            heightCm = Mathf.Min(maxHeightCm, heightCm + heightStep);
-            ApplySettings();
+            Settings.heightCm = Mathf.Min(GameSettings.MaxHeightCm, Settings.heightCm + heightStep);
+            ApplySettings(true);
         }
 
         /// <summary>身長を下げる(ボタンから呼ぶ)。</summary>
         public void DecreaseHeight()
         {
-            heightCm = Mathf.Max(minHeightCm, heightCm - heightStep);
-            ApplySettings();
+            Settings.heightCm = Mathf.Max(GameSettings.MinHeightCm, Settings.heightCm - heightStep);
+            ApplySettings(true);
         }
 
         /// <summary>左利きにする(ボタンから呼ぶ)。</summary>
         public void SelectLeftHand()
         {
-            leftHanded = true;
-            ApplySettings();
+            Settings.leftHanded = true;
+            ApplySettings(true);
         }
 
         /// <summary>右利きにする(ボタンから呼ぶ)。</summary>
         public void SelectRightHand()
         {
-            leftHanded = false;
-            ApplySettings();
+            Settings.leftHanded = false;
+            ApplySettings(true);
         }
 
         /// <summary>パネルを閉じて投げ始める(ボタンから呼ぶ)。</summary>
@@ -157,8 +152,16 @@ namespace VRGame3.Sports.Bowling
             Show();
         }
 
-        private void ApplySettings()
+        /// <summary>設定を表示とボール置き台に反映する。save が true なら保存もする。</summary>
+        private void ApplySettings(bool save)
         {
+            if (save)
+            {
+                SaveStore.SaveSettings();
+            }
+
+            int heightCm = Settings.heightCm;
+            bool leftHanded = Settings.leftHanded;
             if (heightText != null)
             {
                 heightText.text = $"{heightCm} cm";

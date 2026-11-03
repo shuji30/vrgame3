@@ -394,7 +394,9 @@ namespace VRGame3.Sports.Bowling
             {
                 state = State.GameOver;
                 int total = sheet.GetTotalScore();
-                scoreBoard.ShowMessage($"GAME  {total}");
+                // 最後まで遊んだゲームだけ記録する(途中でやめたゲームは記録しない)
+                bool newBest = SaveStore.RecordFinishedGame(SportIds.Bowling, total);
+                scoreBoard.ShowMessage(newBest ? $"GAME  {total}\nBEST!" : $"GAME  {total}");
                 GameFinished?.Invoke(total);
             }
             else
