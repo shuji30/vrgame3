@@ -95,7 +95,7 @@ namespace VRGame3.Sports.Bowling
         public event Action BallReturned;
 
         /// <summary>10フレームが終わったとき。引数は合計点。</summary>
-        public event Action<int> GameFinished;
+        public event Action<GameRecordResult> GameFinished;
 
         private BowlingScoreSheet sheet;
         private State state;
@@ -400,9 +400,9 @@ namespace VRGame3.Sports.Bowling
                 state = State.GameOver;
                 int total = sheet.GetTotalScore();
                 // 最後まで遊んだゲームだけ記録する(途中でやめたゲームは記録しない)
-                bool newBest = SaveStore.RecordFinishedGame(SportIds.Bowling, total);
-                scoreBoard.ShowMessage(newBest ? $"GAME  {total}\nBEST!" : $"GAME  {total}");
-                GameFinished?.Invoke(total);
+                GameRecordResult result = SaveStore.RecordFinishedGame(SportIds.Bowling, total);
+                scoreBoard.ShowMessage(result.NewBest ? $"GAME  {total}\nBEST!" : $"GAME  {total}");
+                GameFinished?.Invoke(result);
             }
             else
             {

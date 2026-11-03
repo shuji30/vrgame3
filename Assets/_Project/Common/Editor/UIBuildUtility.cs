@@ -147,7 +147,10 @@ namespace VRGame3.Common.EditorTools
             image.color = color;
             var button = go.AddComponent<Button>();
             button.targetGraphic = image;
-            UnityEventTools.AddPersistentListener(button.onClick, onClick);
+            if (onClick != null)
+            {
+                UnityEventTools.AddPersistentListener(button.onClick, onClick);
+            }
 
             TMP_Text label = Label(go.transform, "文字", text, font, size, Vector2.zero, boxSize, textColor);
             return (image, label);

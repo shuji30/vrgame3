@@ -176,6 +176,17 @@ namespace VRGame3.Sports.Bowling.EditorTools
                 warnings.Add(panelWarning);
             }
 
+            // 10フレームのあとの結果の表示(M2。docs/art-direction.md 6.9)
+            ResultPanel resultPanel = CommonSceneBuilder.AddResultPanel(root.transform, new Vector3(0f, 1.5f, 2f),
+                PlayerPosition + new Vector3(0f, 1.6f, 0f));
+            var startPanel = root.GetComponent<BowlingStartPanel>();
+            if (resultPanel != null && startPanel != null)
+            {
+                var startSo = new SerializedObject(startPanel);
+                startSo.FindProperty("resultPanel").objectReferenceValue = resultPanel;
+                startSo.ApplyModifiedPropertiesWithoutUndo();
+            }
+
             // シーン切り替えのフェードと、メニューボタンのメニュー・設定パネル(M2)
             string faderWarning = CommonSceneBuilder.AddFader();
             if (faderWarning != null)

@@ -9,7 +9,7 @@ namespace VRGame3.Sports.Bowling
     /// <summary>
     /// 投げ始める前に出す「はじめに」パネル。周囲確認とストラップの案内を出し、身長と利き手を設定してから
     /// 「はじめる」を押すまで、ボールを掴めないようにする(企画書の快適性と安全設計、M1)。
-    /// 10フレームが終わると少し待ってからもう一度出し、次の人が設定し直せるようにする。
+    /// 10フレームが終わると少し待ってから結果を出し、「もういちど」でこのパネルを出し直す(次の人が設定し直せるように)。
     /// 身長と利き手は保存した値(SaveStore)から始め、変えたらすぐ保存する。
     /// </summary>
     public class BowlingStartPanel : MonoBehaviour
@@ -43,8 +43,11 @@ namespace VRGame3.Sports.Bowling
         [SerializeField] private int heightStep = 5;
 
         [Header("その他")]
-        [Tooltip("10フレームが終わってから、パネルをもう一度出すまでの秒数")]
-        [SerializeField] private float showAgainDelay = 4f;
+        [Tooltip("ゲームの結果の表示。「もういちど」でこのパネルを出し直す")]
+        [SerializeField] private ResultPanel resultPanel;
+
+        [Tooltip("10フレームが終わってから、結果(結果の表示がなければこのパネル)を出すまでの秒数")]
+        [SerializeField] private float showAgainDelay = 3f;
 
         [Tooltip("選んでいる利き手のボタンの色")]
         [SerializeField] private Color selectedColor = new Color32(0xFF, 0xD2, 0x4A, 0xFF);
@@ -67,6 +70,10 @@ namespace VRGame3.Sports.Bowling
 
             // メニューの設定パネルで身長・利き手を変えたときも、表示とボール置き台に反映する
             SaveStore.Changed += OnSaveChanged;
+            if (resultPanel != null)
+            {
+                resultPanel.Retry.AddListener(Show);
+            }
         }
 
         private void OnDisable()
@@ -77,6 +84,10 @@ namespace VRGame3.Sports.Bowling
             }
 
             SaveStore.Changed -= OnSaveChanged;
+            if (resultPanel != null)
+            {
+                resultPanel.Retry.RemoveListener(Show);
+            }
         }
 
         private void OnSaveChanged()
@@ -145,7 +156,7 @@ namespace VRGame3.Sports.Bowling
             }
         }
 
-        private void OnGameFinished(int total)
+        private void OnGameFinished(GameRecordResult result)
         {
             // 合計点を見せている間もボールは掴めないようにし、パネルの「はじめる」だけから次のゲームを始める
             if (game != null)
@@ -153,13 +164,20 @@ namespace VRGame3.Sports.Bowling
                 game.SetInputLocked(true);
             }
 
-            StartCoroutine(ShowAfterDelay());
+            StartCoroutine(ShowAfterDelay(result));
         }
 
-        private IEnumerator ShowAfterDelay()
+        private IEnumerator ShowAfterDelay(GameRecordResult result)
         {
             yield return new WaitForSeconds(showAgainDelay);
-            Show();
+            if (resultPanel != null)
+            {
+                resultPanel.Show(result);
+            }
+            else
+            {
+                Show();
+            }
         }
 
         /// <summary>設定を表示とボール置き台に反映する。save が true なら保存もする。</summary>

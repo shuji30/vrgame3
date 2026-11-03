@@ -236,6 +236,86 @@ namespace VRGame3.Common.EditorTools
             return medal;
         }
 
+        /// <summary>
+        /// 結果の表示(6.9)。position はパネルの中心、eye はプレイヤーの目(パネルをそちらへ向ける)。
+        /// 失敗したら null。
+        /// </summary>
+        public static ResultPanel AddResultPanel(Transform parent, Vector3 position, Vector3 eye)
+        {
+            TMP_FontAsset font = UIBuildUtility.GetOrCreateFontAsset();
+            if (font == null)
+            {
+                return null;
+            }
+
+            UIBuildUtility.EnsureEventSystem();
+            var holder = new GameObject("結果");
+            holder.transform.SetParent(parent, false);
+            var panel = holder.AddComponent<ResultPanel>();
+
+            var root = new GameObject("結果のパネル");
+            root.transform.SetParent(holder.transform, false);
+            root.transform.SetPositionAndRotation(position, Quaternion.LookRotation(position - eye, Vector3.up));
+
+            // 看板らしく見せる木の枠(パネルの後ろ)
+            GameObject frame = SceneBuildUtility.CreatePrimitive("枠", PrimitiveType.Cube, Vector3.zero,
+                new Vector3(1.7f, 1.2f, 0.06f), SceneBuildUtility.GetOrCreateMaterial(MaterialFolder, "C_Wood", "#C98B55", false),
+                false);
+            frame.transform.SetParent(root.transform, false);
+            frame.transform.localPosition = new Vector3(0f, 0f, 0.035f);
+            frame.GetComponent<Renderer>().shadowCastingMode = ShadowCastingMode.Off;
+
+            GameObject canvas = UIBuildUtility.CreateCanvas(root.transform, "文字", new Vector2(1600f, 1100f),
+                UIBuildUtility.Background);
+            canvas.transform.localPosition = Vector3.zero;
+            canvas.transform.localRotation = Quaternion.identity;
+            Transform c = canvas.transform;
+            Color light = UIBuildUtility.TextLight;
+
+            UIBuildUtility.Label(c, "見出し", "けっか", font, 110, new Vector2(0f, 440f), new Vector2(1500f, 140f), light);
+            TMP_Text total = UIBuildUtility.Label(c, "ごうけい", "ごうけい 0", font, 160, new Vector2(-150f, 280f),
+                new Vector2(1100f, 190f), light);
+            (Image badge, _) = UIBuildUtility.Button(c, "ベスト更新", "ベスト更新!", font, 70, new Vector2(550f, 280f),
+                new Vector2(360f, 100f), UIBuildUtility.PrimaryColor, UIBuildUtility.TextDark, null);
+            Object.DestroyImmediate(badge.GetComponent<Button>());
+            TMP_Text best = UIBuildUtility.Label(c, "ベスト", "ベスト 0", font, 80, new Vector2(0f, 140f), new Vector2(1500f, 110f),
+                light);
+            RankMedal medal = AddRankMedal(c, font, new Vector2(-560f, -20f), 180f, 90f);
+            TMP_Text points = UIBuildUtility.Label(c, "ポイント", "ポイント 0(+0)", font, 80, new Vector2(330f, -20f),
+                new Vector2(800f, 110f), light);
+            TMP_Text rankUp = UIBuildUtility.Label(c, "ランクアップ", "ランクアップ!", font, 90, new Vector2(0f, -170f),
+                new Vector2(1500f, 120f), UIBuildUtility.PrimaryColor);
+            UIBuildUtility.PrimaryButton(c, "もういちど", "もういちど", font, 80, new Vector2(-300f, -400f),
+                new Vector2(520f, 150f), panel.OnRetry);
+            UIBuildUtility.NormalButton(c, "ハブへ", "ハブへ", font, 80, new Vector2(300f, -400f), new Vector2(520f, 150f),
+                panel.OnHub);
+
+            var audio = root.AddComponent<AudioSource>();
+            audio.playOnAwake = false;
+            audio.spatialBlend = 0f;
+
+            var so = new SerializedObject(panel);
+            so.FindProperty("panelRoot").objectReferenceValue = root;
+            so.FindProperty("totalText").objectReferenceValue = total;
+            so.FindProperty("newBestBadge").objectReferenceValue = badge.gameObject;
+            so.FindProperty("bestText").objectReferenceValue = best;
+            so.FindProperty("medal").objectReferenceValue = medal;
+            so.FindProperty("pointsText").objectReferenceValue = points;
+            so.FindProperty("rankUpText").objectReferenceValue = rankUp.gameObject;
+            so.FindProperty("audioSource").objectReferenceValue = audio;
+            so.FindProperty("resultClip").objectReferenceValue = PlaceholderClip("SFX_Result");
+            so.FindProperty("rankUpClip").objectReferenceValue = PlaceholderClip("SFX_RankUp");
+            so.ApplyModifiedPropertiesWithoutUndo();
+            root.SetActive(false);
+            return panel;
+        }
+
+        /// <summary>Art/Audio/Placeholder の仮の音。無ければ null。</summary>
+        public static AudioClip PlaceholderClip(string name)
+        {
+            return AssetDatabase.LoadAssetAtPath<AudioClip>($"Assets/_Project/Art/Audio/Placeholder/{name}.wav");
+        }
+
         private static Image Circle(Transform parent, string name, Sprite sprite, float size, Color color)
         {
             var go = new GameObject(name, typeof(RectTransform));

@@ -64,21 +64,30 @@ namespace VRGame3.Common
         }
 
         /// <summary>
-        /// 最後まで遊んだゲームを記録して保存する。戻り値はベストを更新したか。
-        /// (腕前ポイントとランクは M2 の順5で足す)
+        /// 最後まで遊んだゲームを記録して保存する(ベスト・遊んだ回数・腕前ポイント・ランク)。
+        /// 途中でやめたゲームでは呼ばない。
         /// </summary>
-        public static bool RecordFinishedGame(string sportId, int score)
+        public static GameRecordResult RecordFinishedGame(string sportId, int score)
         {
             SportRecord record = GetRecord(sportId);
-            bool newBest = record.plays == 0 || score > record.best;
+            var result = new GameRecordResult
+            {
+                Score = score,
+                BestBefore = record.best,
+                NewBest = record.plays == 0 || score > record.best,
+                Points = SkillPointRules.Current.Apply(sportId, score, record.points, record.rank),
+            };
+
             record.plays++;
-            if (newBest)
+            if (result.NewBest)
             {
                 record.best = score;
             }
 
+            record.points = result.Points.PointsAfter;
+            record.rank = result.Points.RankAfter;
             Save();
-            return newBest;
+            return result;
         }
 
         /// <summary>今の中身をファイルに書く。</summary>
