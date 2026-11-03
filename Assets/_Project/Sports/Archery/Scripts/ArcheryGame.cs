@@ -176,7 +176,15 @@ namespace VRGame3.Sports.Archery
             int round = sheet.CurrentRound;
             int index = sheet.ArrowsInCurrentRound;
             bool roundEnded = sheet.AddArrow(hit.OnTarget ? hit.Score : 0, hit.OnTarget && hit.IsX);
-            scoreBoard.Refresh(sheet, DistanceOf(sheet.CurrentRound));
+            // ラウンドが終わったときは、的を置き直すまで終わったラウンドの6本を見せておく
+            if (roundEnded && !sheet.IsGameOver)
+            {
+                scoreBoard.RefreshRound(sheet, round, DistanceOf(round));
+            }
+            else
+            {
+                scoreBoard.Refresh(sheet, DistanceOf(sheet.CurrentRound));
+            }
             ArrowScored?.Invoke(round, index, hit);
 
             if (!roundEnded)
@@ -204,7 +212,10 @@ namespace VRGame3.Sports.Archery
             yield return new WaitForSeconds(roundBreakTime);
             int round = sheet.CurrentRound;
             yield return target.MoveTo(DistanceOf(round), TargetHeight());
+            scoreBoard.Refresh(sheet, DistanceOf(round));
             TargetPlaced?.Invoke(round, DistanceOf(round));
+            // 区切りの間に利き手を変えていたら持ち替える
+            EquipBow();
             state = State.Ready;
         }
 

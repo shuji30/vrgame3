@@ -64,10 +64,15 @@ namespace VRGame3.Sports.Archery
             }
         }
 
-        /// <summary>小型スコア板を書き直す。</summary>
+        /// <summary>小型スコア板を、いまのラウンドで書き直す。</summary>
         public void Refresh(ArcheryScoreSheet sheet, float distance)
         {
-            int round = sheet.CurrentRound;
+            RefreshRound(sheet, sheet.CurrentRound, distance);
+        }
+
+        /// <summary>小型スコア板を、決めたラウンドで書き直す(ラウンドの区切りの間は終わったラウンドを見せる)。</summary>
+        public void RefreshRound(ArcheryScoreSheet sheet, int round, float distance)
+        {
             if (roundText != null)
             {
                 roundText.text = $"ラウンド{round + 1}  {distance:0}m";
@@ -82,7 +87,7 @@ namespace VRGame3.Sports.Archery
 
                 if (i < slotImages.Length && slotImages[i] != null)
                 {
-                    bool current = !sheet.IsGameOver && i == sheet.ArrowsInCurrentRound;
+                    bool current = !sheet.IsGameOver && round == sheet.CurrentRound && i == sheet.ArrowsInCurrentRound;
                     slotImages[i].color = current ? currentSlotColor : slotColor;
                 }
             }

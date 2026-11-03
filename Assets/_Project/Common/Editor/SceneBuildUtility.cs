@@ -40,6 +40,13 @@ namespace VRGame3.Common.EditorTools
 
             var origin = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
             origin.transform.SetPositionAndRotation(position, rotation);
+
+            // サンプルの根元の CharacterController は XRI の移動部品を止めると頭に付いて来ず、
+            // プレイ範囲の中心に立つ見えない柱になる(矢や連続移動の壁の判定に当たる)ので外す
+            foreach (CharacterController controller in origin.GetComponentsInChildren<CharacterController>(true))
+            {
+                Object.DestroyImmediate(controller);
+            }
             Transform[] all = origin.GetComponentsInChildren<Transform>(true);
 
             // 1. ぶつかる移動方式を止める

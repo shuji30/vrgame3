@@ -271,10 +271,14 @@ namespace VRGame3.Common
 
             // 膝の高さで、進む向きに壁がないか
             Vector3 knee = feet + up * 0.5f;
-            if (Physics.SphereCast(knee, bodyRadius * 0.5f, move / distance, out _, distance + bodyRadius, teleportLayers,
-                    QueryTriggerInteraction.Ignore))
+            foreach (RaycastHit wall in Physics.SphereCastAll(knee, bodyRadius * 0.5f, move / distance, distance + bodyRadius,
+                         teleportLayers, QueryTriggerInteraction.Ignore))
             {
-                return false;
+                // 自分の体や手(XR Origin の子)の当たりは壁にしない
+                if (!wall.collider.transform.IsChildOf(xrOrigin.transform))
+                {
+                    return false;
+                }
             }
 
             // 行き先の真下に床があるか(テレポートと同じ決まり)

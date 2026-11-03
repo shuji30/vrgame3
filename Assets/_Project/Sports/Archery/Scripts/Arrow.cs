@@ -27,7 +27,10 @@ namespace VRGame3.Sports.Archery
         [SerializeField] private float missLifetime = 5f;
 
         [Tooltip("どこにも当たらずに飛び続けたら消す秒数")]
-        [SerializeField] private float maxFlightTime = 6f;
+        [SerializeField] private float maxFlightTime = 3f;
+
+        [Tooltip("射場の奥(Z)をこれより越えたら消す(m)")]
+        [SerializeField] private float killDistance = 45f;
 
         [Tooltip("ここより下に落ちたら消す高さ(m)")]
         [SerializeField] private float killHeight = -5f;
@@ -72,8 +75,7 @@ namespace VRGame3.Sports.Archery
             Vector3 step = velocity * dt;
             float distance = step.magnitude;
 
-            if (distance > 0f && Physics.Raycast(start, step / distance, out RaycastHit hit, distance, hitLayers,
-                    QueryTriggerInteraction.Ignore))
+            if (distance > 0f && TryHit(start, step / distance, distance, out RaycastHit hit))
             {
                 Stick(hit, step / distance);
                 return;
@@ -85,11 +87,28 @@ namespace VRGame3.Sports.Archery
                 transform.rotation = Quaternion.LookRotation(velocity);
             }
 
-            if (flightTime > maxFlightTime || transform.position.y < killHeight)
+            if (flightTime > maxFlightTime || transform.position.y < killHeight || transform.position.z > killDistance)
             {
                 Stop(new Hit { OnTarget = false, Point = transform.position });
                 Destroy(gameObject);
             }
+        }
+
+        /// <summary>一番近い当たり(自分の体や手 = XR Origin の子は除く)。</summary>
+        private bool TryHit(Vector3 start, Vector3 direction, float distance, out RaycastHit nearest)
+        {
+            nearest = default;
+            float best = float.MaxValue;
+            foreach (RaycastHit hit in Physics.RaycastAll(start, direction, distance, hitLayers, QueryTriggerInteraction.Ignore))
+            {
+                if (hit.distance < best && hit.collider.GetComponentInParent<Unity.XR.CoreUtils.XROrigin>() == null)
+                {
+                    best = hit.distance;
+                    nearest = hit;
+                }
+            }
+
+            return best < float.MaxValue;
         }
 
         private void Stick(RaycastHit hit, Vector3 direction)

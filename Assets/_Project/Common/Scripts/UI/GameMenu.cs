@@ -104,7 +104,8 @@ namespace VRGame3.Common
         [ContextMenu("開く")]
         public void Open()
         {
-            if (SceneTransition.IsLoading)
+            // 切り替えの途中と、休憩案内などほかのパネルが出ている間は開かない(2枚を重ねない)
+            if (SceneTransition.IsLoading || InputGate.GrabBlocked)
             {
                 return;
             }

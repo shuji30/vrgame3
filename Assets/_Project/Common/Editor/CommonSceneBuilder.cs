@@ -356,7 +356,8 @@ namespace VRGame3.Common.EditorTools
             UIBuildUtility.NormalButton(c, "ハブへ", "ハブへ", font, 80, new Vector2(300f, -400f), new Vector2(520f, 150f),
                 panel.OnHub);
 
-            var audio = root.AddComponent<AudioSource>();
+            // パネルが隠れている間(休憩案内やメニュー)でも鳴らせるよう、いつも有効な物に付ける
+            var audio = holder.AddComponent<AudioSource>();
             audio.playOnAwake = false;
             audio.spatialBlend = 0f;
 

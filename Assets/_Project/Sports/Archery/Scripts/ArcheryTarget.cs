@@ -108,6 +108,8 @@ namespace VRGame3.Sports.Archery
         /// <summary>的の中心の高さに合わせて、脚の長さと横木の位置を直す。</summary>
         private void FitLegs(float height)
         {
+            // 脚は芝の上面(Y -0.04)まで伸ばす
+            height += 0.04f;
             foreach (Transform leg in legs)
             {
                 if (leg == null)

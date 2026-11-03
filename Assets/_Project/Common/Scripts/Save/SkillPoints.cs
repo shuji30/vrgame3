@@ -32,6 +32,13 @@ namespace VRGame3.Common
         public static Outcome Apply(int score, int points, int rank, int[] baseScores, float divisor, int[] requiredPoints,
             int finishBonus = 5, int minSkillDelta = -20, int maxSkillDelta = 40)
         {
+            if (baseScores == null || baseScores.Length == 0 || requiredPoints == null || requiredPoints.Length == 0)
+            {
+                baseScores = new[] { 0 };
+                requiredPoints = new[] { 0 };
+            }
+
+            divisor = Math.Max(0.01f, divisor);
             int ranks = Math.Min(baseScores.Length, requiredPoints.Length);
             rank = Math.Max(0, Math.Min(ranks - 1, rank));
             int skill = (int)Math.Round((score - baseScores[rank]) / (double)divisor, MidpointRounding.AwayFromZero);

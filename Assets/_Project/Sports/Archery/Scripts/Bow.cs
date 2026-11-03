@@ -95,12 +95,17 @@ namespace VRGame3.Sports.Archery
         [Tooltip("放つ音・風切りを鳴らす AudioSource")]
         [SerializeField] private AudioSource releaseSource;
 
+        [Tooltip("放つ音(ランダムに1つ)")]
         [SerializeField] private AudioClip[] releaseClips = new AudioClip[0];
+
+        [Tooltip("矢の風切りの音")]
         [SerializeField] private AudioClip whooshClip;
 
+        [Tooltip("弦のきしみの最大の音量(0〜1)")]
         [Range(0f, 1f)]
         [SerializeField] private float drawVolume = 0.16f;
 
+        [Tooltip("放つ音の音量(0〜1)")]
         [Range(0f, 1f)]
         [SerializeField] private float releaseVolume = 0.32f;
 
@@ -187,11 +192,13 @@ namespace VRGame3.Sports.Archery
             }
 
             // 引いている間:引いた距離と矢の向きを手の位置から決める
+            // 引いた距離は弓の後ろ(-Z)へ引いた分だけ数える。前や横へ動かしても引いたことにしない
             Vector3 pull = drawHand.position - restNock.position;
-            drawDistance = Mathf.Min(pull.magnitude, maxDraw);
-            Vector3 nockPoint = pull.sqrMagnitude > 0.000001f
-                ? restNock.position + pull.normalized * drawDistance
-                : restNock.position;
+            drawDistance = Mathf.Clamp(Vector3.Dot(pull, -transform.forward), 0f, maxDraw);
+            // 弦の中央は、後ろへ引いた分と、横へずれた分(少しだけ)で決める
+            Vector3 back = -transform.forward;
+            Vector3 sideways = Vector3.ClampMagnitude(pull - back * Vector3.Dot(pull, back), 0.15f);
+            Vector3 nockPoint = restNock.position + back * drawDistance + sideways;
             Vector3 direction = transform.position - nockPoint;
             direction = direction.sqrMagnitude > 0.0001f ? direction.normalized : transform.forward;
             nockedArrow.transform.SetPositionAndRotation(nockPoint + direction * arrowLength,

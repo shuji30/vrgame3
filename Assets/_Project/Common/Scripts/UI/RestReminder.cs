@@ -96,7 +96,8 @@ namespace VRGame3.Common
                 return;
             }
 
-            if (InputGate.GrabBlocked || SceneTransition.IsLoading)
+            // メニューや切り替えの途中、シーンに入った直後(出現位置へ動かしてフェードが明けるまで)は待つ
+            if (InputGate.GrabBlocked || SceneTransition.IsLoading || Time.timeSinceLevelLoad < 1f)
             {
                 return;
             }
