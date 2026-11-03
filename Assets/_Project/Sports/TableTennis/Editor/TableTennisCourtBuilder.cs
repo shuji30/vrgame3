@@ -301,73 +301,30 @@ namespace VRGame3.Sports.TableTennis.EditorTools
         /// <summary>こけし風の仮人形(身長 約 1.5m)。体の原点は足元、プレイヤーの方(-Z)を向く。</summary>
         private static TTCpuPlayer BuildCpu(Transform root, PingPongBall ball, Renderer mat, TMP_FontAsset font)
         {
-            var cpuObject = new GameObject("CPU");
-            cpuObject.transform.SetParent(root, false);
-            cpuObject.transform.SetPositionAndRotation(new Vector3(0f, 0f, 1.92f), Quaternion.Euler(0f, 180f, 0f));
-            Transform body = cpuObject.transform;
-
-            Material skin = Mat("T_Skin", "#F0C995");
-            Material ink = Mat("T_Ink", "#4A4660");
-            Doll(body, "胴", PrimitiveType.Capsule, new Vector3(0f, 0.6f, 0f), Vector3.zero, new Vector3(0.4f, 0.55f, 0.4f), Mat("T_Coral", "#FF7F6B"));
-            Doll(body, "胴の帯", PrimitiveType.Cylinder, new Vector3(0f, 0.75f, 0f), Vector3.zero, new Vector3(0.41f, 0.03f, 0.41f), Mat("T_White", "#FFFDF7"));
-
-            var headPivot = new GameObject("頭");
-            headPivot.transform.SetParent(body, false);
-            headPivot.transform.localPosition = new Vector3(0f, 1.2f, 0f);
-            Doll(headPivot.transform, "顔", PrimitiveType.Sphere, new Vector3(0f, 0.13f, 0f), Vector3.zero, Vector3.one * 0.32f, skin);
-            Doll(headPivot.transform, "髪", PrimitiveType.Sphere, new Vector3(0f, 0.23f, -0.02f), Vector3.zero, new Vector3(0.34f, 0.2f, 0.34f),
-                Mat("T_WoodDark", "#8A5A3B"));
-            var eyes = new List<Transform>();
-            foreach (float x in new[] { -0.06f, 0.06f })
-            {
-                eyes.Add(Doll(headPivot.transform, "目", PrimitiveType.Sphere, new Vector3(x, 0.15f, 0.15f), Vector3.zero,
-                    new Vector3(0.035f, 0.05f, 0.02f), ink).transform);
-                Doll(headPivot.transform, "ほお", PrimitiveType.Sphere, new Vector3(x * 1.67f, 0.09f, 0.14f), Vector3.zero,
-                    new Vector3(0.04f, 0.025f, 0.01f), Mat("T_Cheek", "#FFB4A2"));
-            }
-
-            GameObject racketHand = Doll(body, "ラケットの手", PrimitiveType.Sphere, new Vector3(0.3f, 1.0f, 0.25f), Vector3.zero,
-                Vector3.one * 0.11f, skin);
-            GameObject tossHand = Doll(body, "ボールの手", PrimitiveType.Sphere, new Vector3(-0.3f, 0.95f, 0.25f), Vector3.zero,
-                Vector3.one * 0.11f, skin);
+            CpuDollBuilder.Parts doll = CpuDollBuilder.Build(root, "CPU", new Vector3(0f, 0f, 1.92f), Quaternion.Euler(0f, 180f, 0f), font);
+            GameObject cpuObject = doll.Body.gameObject;
+            Transform body = doll.Body;
 
             // CPU のラケット(ラバーの表は強さの色)
             var cpuRacket = new GameObject("CPU のラケット");
-            cpuRacket.transform.SetParent(racketHand.transform, false);
+            cpuRacket.transform.SetParent(doll.RightHand, false);
             cpuRacket.transform.localScale = Vector3.one / 0.11f;
             cpuRacket.transform.localRotation = Quaternion.Euler(-60f, 0f, 0f);
             Renderer rubber = BuildRacketVisual(cpuRacket.transform, Mat("T_White", "#FFFDF7"));
-
-            // 名札(頭の上 0.3m、プレイヤーの方へ向ける)
-            GameObject tag = UIBuildUtility.CreateCanvas(body, "名札", new Vector2(600f, 180f), Color.white);
-            tag.transform.localPosition = new Vector3(0f, 1.8f, 0f);
-            tag.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
-            Object.DestroyImmediate(tag.GetComponent<UnityEngine.XR.Interaction.Toolkit.UI.TrackedDeviceGraphicRaycaster>());
-            TMP_Text tagText = UIBuildUtility.Label(tag.transform, "文字", "ふつう ▲▲", font, 140, Vector2.zero, new Vector2(580f, 170f),
-                UIBuildUtility.TextDark);
 
             var cpu = cpuObject.AddComponent<TTCpuPlayer>();
             var so = new SerializedObject(cpu);
             so.FindProperty("ball").objectReferenceValue = ball;
             so.FindProperty("body").objectReferenceValue = body;
-            so.FindProperty("racketHand").objectReferenceValue = racketHand.transform;
-            so.FindProperty("tossHand").objectReferenceValue = tossHand.transform;
+            so.FindProperty("racketHand").objectReferenceValue = doll.RightHand;
+            so.FindProperty("tossHand").objectReferenceValue = doll.LeftHand;
             SetArray(so.FindProperty("levelColorRenderers"), new Object[] { mat, rubber });
-            so.FindProperty("nameTagBack").objectReferenceValue = tag.GetComponent<Image>();
-            so.FindProperty("nameTagText").objectReferenceValue = tagText;
-            so.FindProperty("head").objectReferenceValue = headPivot.transform;
-            SetArray(so.FindProperty("eyes"), eyes.Cast<Object>().ToArray());
+            so.FindProperty("nameTagBack").objectReferenceValue = doll.NameTagBack;
+            so.FindProperty("nameTagText").objectReferenceValue = doll.NameTagText;
+            so.FindProperty("head").objectReferenceValue = doll.Head;
+            SetArray(so.FindProperty("eyes"), doll.Eyes.Cast<Object>().ToArray());
             so.ApplyModifiedPropertiesWithoutUndo();
             return cpu;
-        }
-
-        /// <summary>人形の部品。影を落とす(動く物なので)。</summary>
-        private static GameObject Doll(Transform parent, string name, PrimitiveType type, Vector3 localPosition, Vector3 euler,
-            Vector3 scale, Material material)
-        {
-            GameObject go = Part(parent, name, type, localPosition, euler, scale, material);
-            go.GetComponent<Renderer>().shadowCastingMode = ShadowCastingMode.On;
-            return go;
         }
 
         // ---------------------------------------------------------------- 表示

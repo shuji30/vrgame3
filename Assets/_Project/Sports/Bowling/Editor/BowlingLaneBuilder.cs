@@ -135,9 +135,9 @@ namespace VRGame3.Sports.Bowling.EditorTools
                 new[] { new Vector3(-12f, 0f, 6f), new Vector3(16f, 0f, 10f), new Vector3(1f, 0f, -22f) });
 
             Transform foulLine = BuildFoulLine(root.transform, "ファウルライン(自分のレーン)", PlayerLaneX, palette);
-            BuildFoulLine(root.transform, "ファウルライン(CPU のレーン)", CpuLaneX, palette);
+            Transform cpuFoulLine = BuildFoulLine(root.transform, "ファウルライン(CPU のレーン)", CpuLaneX, palette);
             PinSetter pinSetter = BuildPins(root.transform, "ピンセッター(自分のレーン)", PlayerLaneX, palette, pinPhysics);
-            BuildPins(root.transform, "ピンセッター(CPU のレーン)", CpuLaneX, palette, pinPhysics);
+            PinSetter cpuPinSetter = BuildPins(root.transform, "ピンセッター(CPU のレーン)", CpuLaneX, palette, pinPhysics);
             List<ThrowableObject> balls = BuildBallRack(root.transform, palette, ballPhysics, foulLine);
             BowlingScoreBoard scoreBoard = BuildScoreBoards(root.transform, palette);
 
@@ -175,6 +175,9 @@ namespace VRGame3.Sports.Bowling.EditorTools
             {
                 warnings.Add(panelWarning);
             }
+
+            // CPU 対戦の相手(M3。隣のレーンで交互にフレームを投げる)
+            BuildCpu(root, game, cpuPinSetter, cpuFoulLine, scoreBoard, ballPhysics, palette);
 
             // 10フレームのあとの結果の表示(M2。docs/art-direction.md 6.9)
             ResultPanel resultPanel = CommonSceneBuilder.AddResultPanel(root.transform, new Vector3(0f, 1.5f, 2f),
@@ -484,6 +487,58 @@ namespace VRGame3.Sports.Bowling.EditorTools
         /// <summary>
         /// 2レーン共用のボール置き台(レーンの間)とボール3個。台の上の2本のレールの間にボールを置き、転がり落ちないようにする。
         /// </summary>
+        /// <summary>
+        /// CPU の仮人形・CPU のボール・足元の敷物を置き、BowlingCpu でつなぐ(docs/art-direction.md「M3 ボウリングの CPU 対戦の見た目」)。
+        /// </summary>
+        private static void BuildCpu(GameObject root, BowlingGame game, PinSetter pins, Transform foulLine,
+            BowlingScoreBoard playerBoard, PhysicsMaterial ballPhysics, BowlingBuildPalette palette)
+        {
+            TMP_FontAsset font = UIBuildUtility.GetOrCreateFontAsset();
+            if (font == null)
+            {
+                return;
+            }
+
+            var waitPosition = new Vector3(CpuLaneX, 0f, -3.2f);
+            CpuDollBuilder.Parts doll = CpuDollBuilder.Build(root.transform, "CPU", waitPosition, Quaternion.identity, font);
+
+            GameObject mat = SceneBuildUtility.CreatePrimitive("CPU の敷物", PrimitiveType.Cube, waitPosition + new Vector3(0f, 0.004f, 0f),
+                new Vector3(1.0f, 0.005f, 0.6f), palette.Line, false);
+            mat.transform.SetParent(root.transform, true);
+            mat.GetComponent<Renderer>().shadowCastingMode = ShadowCastingMode.Off;
+
+            // CPU のボール(黄色。置き台には置かず、CPU の手元に出す)
+            Material yellow = SceneBuildUtility.GetOrCreateMaterial(MaterialFolder, "B_BallCpu", "#FFD24A", false);
+            GameObject ball = SceneBuildUtility.CreatePrimitive("CPU のボール", PrimitiveType.Sphere, waitPosition + Vector3.up * 0.5f,
+                Vector3.one * BallDiameter, yellow, true);
+            ball.transform.SetParent(root.transform, true);
+            ball.GetComponent<Collider>().sharedMaterial = ballPhysics;
+            var body = ball.AddComponent<Rigidbody>();
+            body.mass = BallMass;
+            body.interpolation = RigidbodyInterpolation.Interpolate;
+            body.collisionDetectionMode = CollisionDetectionMode.ContinuousSpeculative;
+
+            var cpu = doll.Body.gameObject.AddComponent<BowlingCpu>();
+            var so = new SerializedObject(cpu);
+            so.FindProperty("ball").objectReferenceValue = body;
+            so.FindProperty("pinSetter").objectReferenceValue = pins;
+            so.FindProperty("foulLine").objectReferenceValue = foulLine;
+            Transform cpuRow = playerBoard.transform.Find("CPU の段(M3 で使う)");
+            so.FindProperty("scoreBoard").objectReferenceValue = cpuRow != null ? cpuRow.GetComponent<BowlingScoreBoard>() : null;
+            so.FindProperty("body").objectReferenceValue = doll.Body;
+            so.FindProperty("throwHand").objectReferenceValue = doll.RightHand;
+            so.FindProperty("nameTagBack").objectReferenceValue = doll.NameTagBack;
+            so.FindProperty("nameTagText").objectReferenceValue = doll.NameTagText;
+            SerializedProperty renderers = so.FindProperty("levelColorRenderers");
+            renderers.arraySize = 1;
+            renderers.GetArrayElementAtIndex(0).objectReferenceValue = mat.GetComponent<Renderer>();
+            so.ApplyModifiedPropertiesWithoutUndo();
+
+            var gameSo = new SerializedObject(game);
+            gameSo.FindProperty("cpu").objectReferenceValue = cpu;
+            gameSo.ApplyModifiedPropertiesWithoutUndo();
+        }
+
         private static List<ThrowableObject> BuildBallRack(Transform parent, BowlingBuildPalette palette, PhysicsMaterial ballPhysics,
             Transform foulLine)
         {

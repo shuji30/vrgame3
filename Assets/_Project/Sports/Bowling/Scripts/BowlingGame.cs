@@ -21,6 +21,7 @@ namespace VRGame3.Sports.Bowling
             Rolling,
             Settling,
             Clearing,
+            CpuTurn,
             GameOver,
         }
 
@@ -85,6 +86,9 @@ namespace VRGame3.Sports.Bowling
         [Tooltip("交代の案内・順位表・チャレンジに使うパネル")]
         [SerializeField] private ChoicePanel choicePanel;
 
+        [Tooltip("CPU 対戦の相手(隣のレーン)")]
+        [SerializeField] private BowlingCpu cpu;
+
         [Tooltip("10フレームのあと、交代の案内やチャレンジの結果を出すまでの秒数")]
         [SerializeField] private float modeResultDelay = 3f;
 
@@ -136,6 +140,8 @@ namespace VRGame3.Sports.Bowling
         private string challengeId;
         private int challengeThrows;
         private int challengeFrames;
+        private bool cpuMatch;
+        private bool playerFrameEnded;
 
         /// <summary>投げるボール。</summary>
         public IReadOnlyList<ThrowableObject> Balls => balls;
@@ -210,6 +216,12 @@ namespace VRGame3.Sports.Bowling
         public void NewGame()
         {
             challengeId = null;
+            cpuMatch = false;
+            if (cpu != null)
+            {
+                cpu.Clear();
+            }
+
             sheet = new BowlingScoreSheet();
             pinSetter.ResetRack();
             state = State.Ready;
@@ -230,6 +242,12 @@ namespace VRGame3.Sports.Bowling
             }
 
             NewGame();
+            if (mode == SportMode.Cpu && cpu != null)
+            {
+                // 交互にフレームを投げる(プレイヤーが先)
+                cpuMatch = true;
+                cpu.NewGame(SaveStore.Settings.cpuLevel);
+            }
         }
 
         /// <summary>チャレンジの一覧を出す。</summary>
@@ -482,7 +500,8 @@ namespace VRGame3.Sports.Bowling
             RollRecorded?.Invoke(frame, rollIndex, knocked, symbol);
 
             // フレームの終わりは休憩案内を出してよい区切り
-            if (sheet.CurrentFrame != frame || sheet.IsGameOver)
+            playerFrameEnded = sheet.CurrentFrame != frame || sheet.IsGameOver;
+            if (playerFrameEnded)
             {
                 RestReminder.AtBreak();
             }
@@ -576,6 +595,15 @@ namespace VRGame3.Sports.Bowling
                 return;
             }
 
+            if (cpuMatch && playerFrameEnded)
+            {
+                // CPU の番:隣のレーンで1フレーム投げる。その間はボールを掴めない
+                state = State.CpuTurn;
+                scoreBoard.ShowChallenge("CPU のばん", string.Empty);
+                cpu.PlayFrame(OnCpuFrameDone);
+                return;
+            }
+
             if (sheet.IsGameOver && TurnSession.Active)
             {
                 // 交代プレイは記録しない。スコアを出してから次の人へ
@@ -601,6 +629,31 @@ namespace VRGame3.Sports.Bowling
             {
                 state = State.Ready;
             }
+        }
+
+        private void OnCpuFrameDone()
+        {
+            if (!cpuMatch)
+            {
+                return;
+            }
+
+            scoreBoard.Refresh(sheet);
+            if (!sheet.IsGameOver)
+            {
+                state = State.Ready;
+                return;
+            }
+
+            // 両方が10フレームを投げ終えた:自分のスコアで記録し、勝敗を出す
+            state = State.GameOver;
+            GameSession.InProgress = false;
+            int total = sheet.GetTotalScore();
+            int cpuTotal = cpu.Sheet.GetTotalScore();
+            GameRecordResult result = SaveStore.RecordFinishedGame(SportIds.Bowling, total);
+            string verdict = total > cpuTotal ? "かち!" : total < cpuTotal ? "まけ" : "ひきわけ";
+            scoreBoard.ShowMessage($"{verdict}\n{total} - {cpuTotal}");
+            GameFinished?.Invoke(result);
         }
 
         private System.Collections.IEnumerator FinishTurnLater(int total)
