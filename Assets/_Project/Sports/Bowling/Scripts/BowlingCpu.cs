@@ -116,6 +116,8 @@ namespace VRGame3.Sports.Bowling
             waitPosition = body.position;
             handRest = throwHand.localPosition;
             ball.gameObject.SetActive(false);
+            // 回転の上限(既定 7 ラジアン/秒)のままだと、転がる回転に合わせて球が約 0.8m/秒まで減速してしまう
+            ball.maxAngularVelocity = 100f;
         }
 
         /// <summary>新しいゲーム。強さを決め、スコア板の CPU の段を空にする。</summary>

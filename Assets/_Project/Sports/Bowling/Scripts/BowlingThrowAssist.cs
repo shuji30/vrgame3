@@ -10,6 +10,15 @@ namespace VRGame3.Sports.Bowling
     /// </summary>
     public class BowlingThrowAssist : MonoBehaviour, IThrowAdjuster
     {
+        private void Awake()
+        {
+            // 回転の上限(既定 7 ラジアン/秒)のままだと、レーンの上で転がる回転に追いつけず、球が少しずつ減速する
+            if (TryGetComponent(out Rigidbody body))
+            {
+                body.maxAngularVelocity = 100f;
+            }
+        }
+
         [Tooltip("レーンの向きの基準。ファウルラインを指定し、その青い矢印(Z+)をピンの方向とする")]
         [SerializeField] private Transform laneDirection;
 
