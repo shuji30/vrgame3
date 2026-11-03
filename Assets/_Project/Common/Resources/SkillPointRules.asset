@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 24ac9e88874731b4a89bb9d78d32cd98, type: 3}
+  m_Name: SkillPointRules
+  m_EditorClassIdentifier: Assembly-CSharp::VRGame3.Common.SkillPointRules
+  requiredPoints: 00000000640000002c01000058020000i
+  finishBonus: 5
+  minSkillDelta: -20
+  maxSkillDelta: 40
+  sports:
+  - sportId: bowling
+    divisor: 2
+    baseScores: 460000006e00000096000000be000000i
+  - sportId: archery
+    divisor: 1.5
+    baseScores: 3c0000005a0000007800000096000000i

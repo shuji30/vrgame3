@@ -263,6 +263,15 @@ namespace VRGame3.Sports.TableTennis
         public static bool PredictLanding(Vector3 position, Vector3 velocity, Settings s, Table table, out Vector3 landing,
             out float time, out bool hitNet, float maxTime = 3f)
         {
+            return PredictBounce(position, velocity, s, table, out landing, out time, out hitNet, out _, maxTime);
+        }
+
+        /// <summary>
+        /// PredictLanding と同じく最初に台か床に落ちるところまでたどり、台で弾んだ直後の速さも返す。
+        /// </summary>
+        public static bool PredictBounce(Vector3 position, Vector3 velocity, Settings s, Table table, out Vector3 landing,
+            out float time, out bool hitNet, out Vector3 afterBounce, float maxTime = 3f)
+        {
             hitNet = false;
             time = 0f;
             var none = new RacketPose();
@@ -277,16 +286,19 @@ namespace VRGame3.Sports.TableTennis
                 else if (e.Kind == EventKind.Table)
                 {
                     landing = e.Point;
+                    afterBounce = velocity;
                     return true;
                 }
                 else if (e.Kind == EventKind.Floor)
                 {
                     landing = e.Point;
+                    afterBounce = velocity;
                     return false;
                 }
             }
 
             landing = position;
+            afterBounce = velocity;
             return false;
         }
 

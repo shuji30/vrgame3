@@ -5,5 +5,6 @@ namespace VRGame3.Common
     {
         public const string Bowling = "bowling";
         public const string Archery = "archery";
+        public const string TableTennis = "tabletennis";
     }
 }

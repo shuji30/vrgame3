@@ -41,6 +41,15 @@ namespace VRGame3.Common
         {
             new SportRule { sportId = SportIds.Bowling, divisor = 2f, baseScores = new[] { 70, 110, 150, 190 } },
             new SportRule { sportId = SportIds.Archery, divisor = 1.5f, baseScores = new[] { 60, 90, 120, 150 } },
+            new SportRule { sportId = SportIds.TableTennis, divisor = 1f, baseScores = new[] { 40, 70, 100, 130 } },
+        };
+
+        // アセットに種目の行が足りないとき(古いアセット)に使う既定値
+        private static readonly SportRule[] Defaults =
+        {
+            new SportRule { sportId = SportIds.Bowling, divisor = 2f, baseScores = new[] { 70, 110, 150, 190 } },
+            new SportRule { sportId = SportIds.Archery, divisor = 1.5f, baseScores = new[] { 60, 90, 120, 150 } },
+            new SportRule { sportId = SportIds.TableTennis, divisor = 1f, baseScores = new[] { 40, 70, 100, 130 } },
         };
 
         private static SkillPointRules cached;
@@ -66,7 +75,8 @@ namespace VRGame3.Common
         /// <summary>1ゲームの結果をポイントとランクに当てはめる。</summary>
         public SkillPoints.Outcome Apply(string sportId, int score, int points, int rank)
         {
-            SportRule rule = Array.Find(sports, s => s.sportId == sportId) ?? sports[0];
+            SportRule rule = Array.Find(sports, s => s.sportId == sportId) ??
+                             Array.Find(Defaults, s => s.sportId == sportId) ?? Defaults[0];
             return SkillPoints.Apply(score, points, rank, rule.baseScores, rule.divisor, requiredPoints, finishBonus,
                 minSkillDelta, maxSkillDelta);
         }

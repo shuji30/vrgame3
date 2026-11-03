@@ -30,11 +30,18 @@ namespace VRGame3.Common
         /// <summary>アーチェリーのねらいの補助を出すか。</summary>
         public bool aimAssist = true;
 
+        /// <summary>卓球の入りやすさの補助を使うか。</summary>
+        public bool hitAssist = true;
+
+        /// <summary>卓球の CPU の強さ(0 やさしい / 1 ふつう / 2 つよい)。</summary>
+        public int cpuLevel = 1;
+
         /// <summary>読み込んだ値が範囲の外なら直す。</summary>
         public void Clamp()
         {
             heightCm = Math.Max(MinHeightCm, Math.Min(MaxHeightCm, heightCm));
             moveSpeedLevel = Math.Max(0, Math.Min(2, moveSpeedLevel));
+            cpuLevel = Math.Max(0, Math.Min(2, cpuLevel));
         }
     }
 }
