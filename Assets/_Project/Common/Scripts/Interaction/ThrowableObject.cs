@@ -29,6 +29,11 @@ namespace VRGame3.Common
         [Tooltip("回転の速さの上限(ラジアン/秒)")]
         [SerializeField] private float maxAngularSpeed = 30f;
 
+        [Header("転がり")]
+        [Tooltip("床などに触れて転がっているときの減速の強さ(m/秒²)。0 で減速なし(どこまでも転がる)。空中では効かない")]
+        [Range(0f, 5f)]
+        [SerializeField] private float rollingDeceleration = 1.5f;
+
         [Header("速度の計算")]
         [Tooltip("離す直前の何秒間の動きから速度を求めるか。短いと敏感、長いと安定する")]
         [Range(0.02f, 0.3f)]
@@ -57,6 +62,9 @@ namespace VRGame3.Common
         private Vector3 pendingVelocity;
         private Vector3 pendingAngularVelocity;
         private bool waitingForFirstImpact;
+
+        // 前の物理ステップで何かに触れていたか(OnCollisionStay で立て、FixedUpdate で使って下ろす)
+        private bool isTouching;
 
         /// <summary>いま手に持たれているか。</summary>
         public bool IsHeld => isHeld;
@@ -93,6 +101,43 @@ namespace VRGame3.Common
         }
 
         private void FixedUpdate()
+        {
+            ApplyRollingDeceleration();
+            ApplyPendingThrow();
+        }
+
+        /// <summary>
+        /// 転がっている間、速さを一定の割合で落とす。物理エンジンには転がり抵抗がないため自前で減速する。
+        /// </summary>
+        private void ApplyRollingDeceleration()
+        {
+            bool touching = isTouching;
+            isTouching = false;
+            if (!touching || isHeld || body.isKinematic || rollingDeceleration <= 0f)
+            {
+                return;
+            }
+
+            float speed = body.linearVelocity.magnitude;
+            if (speed <= Mathf.Epsilon)
+            {
+                body.angularVelocity = Vector3.zero;
+                return;
+            }
+
+            // 速さを減速分だけ落とし、回転も同じ割合で落とす(転がりと滑りがずれないように)
+            float newSpeed = Mathf.Max(0f, speed - rollingDeceleration * Time.fixedDeltaTime);
+            float ratio = newSpeed / speed;
+            body.linearVelocity *= ratio;
+            body.angularVelocity *= ratio;
+        }
+
+        private void OnCollisionStay(Collision collision)
+        {
+            isTouching = true;
+        }
+
+        private void ApplyPendingThrow()
         {
             // XRI が Rigidbody を物理挙動に戻してから速度を入れる(キネマティックのままだと速度が無視される)
             if (!hasPendingThrow || isHeld || body.isKinematic)

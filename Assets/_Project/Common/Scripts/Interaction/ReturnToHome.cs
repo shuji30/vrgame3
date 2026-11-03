@@ -22,6 +22,10 @@ namespace VRGame3.Common
         [Tooltip("元の位置からこの距離(m)以内なら、止まっていても戻さない(置き台の上で転がった程度は無視する)")]
         [SerializeField] private float ignoreDistance = 0.3f;
 
+        [Tooltip("元の位置から離れてこの秒数たったら、止まっていなくても戻す。0 で無効")]
+        [Range(0f, 30f)]
+        [SerializeField] private float maxAwayTime = 10f;
+
         [Tooltip("この高さ(m)より下に落ちたら、止まるのを待たずにすぐ戻す")]
         [SerializeField] private float fallHeight = -2f;
 
@@ -31,6 +35,7 @@ namespace VRGame3.Common
         private Vector3 homePosition;
         private Quaternion homeRotation;
         private float stoppedTime;
+        private float awayTime;
 
         private void Awake()
         {
@@ -47,6 +52,7 @@ namespace VRGame3.Common
             if ((grab != null && grab.isSelected) || body.isKinematic)
             {
                 stoppedTime = 0f;
+                awayTime = 0f;
                 return;
             }
 
@@ -56,9 +62,23 @@ namespace VRGame3.Common
                 return;
             }
 
-            bool isStopped = body.linearVelocity.magnitude < stopSpeed;
             bool isAway = (body.position - homePosition).sqrMagnitude > ignoreDistance * ignoreDistance;
-            if (!isStopped || !isAway)
+            if (!isAway)
+            {
+                stoppedTime = 0f;
+                awayTime = 0f;
+                return;
+            }
+
+            awayTime += Time.fixedDeltaTime;
+            if (maxAwayTime > 0f && awayTime >= maxAwayTime)
+            {
+                ReturnNow();
+                return;
+            }
+
+            bool isStopped = body.linearVelocity.magnitude < stopSpeed;
+            if (!isStopped)
             {
                 stoppedTime = 0f;
                 return;
@@ -78,6 +98,7 @@ namespace VRGame3.Common
         public void ReturnNow()
         {
             stoppedTime = 0f;
+            awayTime = 0f;
 
             // 戻した先(置き台)への着地を、投げた結果として数えないようにする
             if (throwable != null)
