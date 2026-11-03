@@ -268,6 +268,11 @@ namespace VRGame3.Sports.TableTennis
                 serving = false;
                 if (ball.IsFlying)
                 {
+                    if (racketHand != null)
+                    {
+                        racketHand.position = ball.Position + Vector3.forward * 0.04f;
+                    }
+
                     Vector3 target = gentleServe
                         ? new Vector3(Table.Center.x + Random.Range(-0.15f, 0.15f), Table.Top, Table.Center.z - 0.85f)
                         : PlayerCourtTarget(l, true);
@@ -308,6 +313,12 @@ namespace VRGame3.Sports.TableTennis
             if ((!noMiss && Mathf.Abs(ball.Position.x - hand.x) > l.reach) || Table.SideOf(ball.Position) != TTSide.Cpu)
             {
                 return;
+            }
+
+            // 打つ瞬間は、手(ラケット)を球の位置へ合わせる(球がラケットから出るように見せる)
+            if (racketHand != null)
+            {
+                racketHand.position = ball.Position + Vector3.forward * 0.04f;
             }
 
             Vector3 target = PlayerCourtTarget(l, false);

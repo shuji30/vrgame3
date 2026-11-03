@@ -100,6 +100,22 @@ namespace VRGame3.Common.EditorTools
             so.FindProperty("headSource").objectReferenceValue = cpu.transform.Find("頭");
             so.ApplyModifiedPropertiesWithoutUndo();
 
+            // 手に持つ物(卓球の CPU のラケット)を、女の子の右手の骨に持たせる(仮人形の手は IK の目標として隠したまま)
+            Transform dollHand = cpu.transform.Find("右手");
+            Transform handBone = animator != null && animator.isHuman ? animator.GetBoneTransform(HumanBodyBones.RightHand) : null;
+            if (dollHand != null && handBone != null)
+            {
+                foreach (Transform held in dollHand.Cast<Transform>().ToArray())
+                {
+                    Quaternion rotation = held.rotation;
+                    held.SetParent(handBone, false);
+                    held.position = handBone.position;
+                    held.rotation = rotation;
+                    float s = Mathf.Max(0.0001f, handBone.lossyScale.x);
+                    held.localScale = Vector3.one / s;
+                }
+            }
+
             // 名札を頭のボーンの上 0.3m へ
             Transform tag = cpu.transform.Find("名札");
             if (animator != null && animator.isHuman && tag != null)

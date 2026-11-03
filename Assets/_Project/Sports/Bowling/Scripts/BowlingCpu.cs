@@ -63,9 +63,9 @@ namespace VRGame3.Sports.Bowling
         [Tooltip("強さ3段階(やさしい / ふつう / つよい)")]
         [SerializeField] private Level[] levels =
         {
-            new Level { label = "やさしい", marks = "▲", color = new Color32(0x6C, 0xC3, 0x6A, 0xFF), speed = 6f, scatter = 0.15f },
-            new Level { label = "ふつう", marks = "▲▲", color = new Color32(0x3A, 0xA7, 0xFF, 0xFF), speed = 7f, scatter = 0.08f },
-            new Level { label = "つよい", marks = "▲▲▲", color = new Color32(0xFF, 0x8A, 0x3D, 0xFF), speed = 8f, scatter = 0.04f },
+            new Level { label = "やさしい", marks = "▲", color = new Color32(0x6C, 0xC3, 0x6A, 0xFF), speed = 7f, scatter = 0.15f },
+            new Level { label = "ふつう", marks = "▲▲", color = new Color32(0x3A, 0xA7, 0xFF, 0xFF), speed = 8f, scatter = 0.08f },
+            new Level { label = "つよい", marks = "▲▲▲", color = new Color32(0xFF, 0x8A, 0x3D, 0xFF), speed = 9f, scatter = 0.04f },
         };
 
         [Header("動き")]
@@ -243,7 +243,13 @@ namespace VRGame3.Sports.Bowling
             Vector3 aim = fullRack ? PinCenter(true) + foulLine.right * pocketOffset : PinCenter(false);
             aim += foulLine.right * Random.Range(-l.scatter, l.scatter);
             Vector3 from = throwHand.position + Vector3.down * 0.12f;
-            from.y = Mathf.Max(from.y, foulLine.position.y + 0.12f);
+            // 放す位置は、真下の床にちょうど載る高さにする(浮いた所から落とすと跳ねる)
+            float radius = ball.transform.lossyScale.x * 0.5f;
+            if (Physics.Raycast(from + Vector3.up * 0.5f, Vector3.down, out RaycastHit floor, 2f, ~0, QueryTriggerInteraction.Ignore))
+            {
+                from.y = floor.point.y + radius + 0.002f;
+            }
+
             Vector3 direction = aim - from;
             direction.y = 0f;
             direction.Normalize();
@@ -252,7 +258,8 @@ namespace VRGame3.Sports.Bowling
             ball.position = from;
             ball.isKinematic = false;
             ball.linearVelocity = direction * l.speed;
-            ball.angularVelocity = Vector3.Cross(Vector3.up, direction) * (l.speed / 0.11f);
+            // 滑らずに転がる回転(速さ ÷ 半径)。回転の向きは進む向きと上向きの外積
+            ball.angularVelocity = Vector3.Cross(Vector3.up, direction) * (l.speed / Mathf.Max(0.05f, radius));
 
             // 振り抜いて手を上げる
             yield return MoveHand(bottom, handRest + new Vector3(0f, 0.2f, 0.3f), 0.3f);

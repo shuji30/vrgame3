@@ -23,3 +23,6 @@ MonoBehaviour:
   - sportId: archery
     divisor: 1.5
     baseScores: 3c0000005a0000007800000096000000i
+  - sportId: tabletennis
+    divisor: 1
+    baseScores: 28000000460000006400000082000000i
