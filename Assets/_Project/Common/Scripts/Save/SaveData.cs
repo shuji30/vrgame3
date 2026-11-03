@@ -13,5 +13,8 @@ namespace VRGame3.Common
         public GameSettings settings = new GameSettings();
 
         public List<SportRecord> records = new List<SportRecord>();
+
+        /// <summary>クリアしたチャレンジの ID(版 2 から)。</summary>
+        public List<string> clearedChallenges = new List<string>();
     }
 }

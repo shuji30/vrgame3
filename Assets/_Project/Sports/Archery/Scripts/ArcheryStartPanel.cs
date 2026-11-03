@@ -14,6 +14,9 @@ namespace VRGame3.Sports.Archery
         [Tooltip("進行役")]
         [SerializeField] private ArcheryGame game;
 
+        [Tooltip("モードの行(チャレンジなら課題の一覧へ進む)")]
+        [SerializeField] private ModeSelector modeSelector;
+
         [Tooltip("パネル全体(表示・非表示を切り替える)")]
         [SerializeField] private GameObject panelRoot;
 
@@ -75,6 +78,11 @@ namespace VRGame3.Sports.Archery
         public void Show()
         {
             Refresh();
+            if (modeSelector != null)
+            {
+                modeSelector.Refresh();
+            }
+
             shown = true;
             panelRoot.SetActive(!InputGate.GrabBlocked);
         }
@@ -94,7 +102,14 @@ namespace VRGame3.Sports.Archery
         {
             shown = false;
             panelRoot.SetActive(false);
-            game.StartGame();
+            if (modeSelector != null && modeSelector.Mode == SportMode.Challenge)
+            {
+                game.ShowChallengeList();
+            }
+            else
+            {
+                game.StartGame();
+            }
         }
 
         public void IncreaseHeight()

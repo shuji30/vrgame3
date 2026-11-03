@@ -401,15 +401,18 @@ namespace VRGame3.Hub.EditorTools
             Transform c = canvas.transform;
 
             var component = sign.AddComponent<SportSign>();
-            UIBuildUtility.Label(c, "種目名", title, font, 240, new Vector2(0f, 640f), new Vector2(2100f, 280f),
+            // docs/art-direction.md「M3 ハブの3枚目の看板」の文字の並び(チャレンジの行を足した)
+            UIBuildUtility.Label(c, "種目名", title, font, 240, new Vector2(0f, 660f), new Vector2(2100f, 280f),
                 UIBuildUtility.TextLight);
-            RankMedal medal = CommonSceneBuilder.AddRankMedal(c, font, new Vector2(-500f, 360f), 200f, 200f);
-            TMP_Text points = UIBuildUtility.Label(c, "ポイント", "ポイント 0", font, 190, new Vector2(0f, 130f),
+            RankMedal medal = CommonSceneBuilder.AddRankMedal(c, font, new Vector2(-500f, 420f), 200f, 200f);
+            TMP_Text points = UIBuildUtility.Label(c, "ポイント", "ポイント 0", font, 190, new Vector2(0f, 200f),
                 new Vector2(2100f, 230f), UIBuildUtility.TextLight);
-            TMP_Text best = UIBuildUtility.Label(c, "ベスト", "ベスト —", font, 190, new Vector2(0f, -100f),
+            TMP_Text best = UIBuildUtility.Label(c, "ベスト", "ベスト —", font, 190, new Vector2(0f, -10f),
                 new Vector2(2100f, 230f), UIBuildUtility.TextLight);
-            (Image playImage, TMP_Text playLabel) = UIBuildUtility.PrimaryButton(c, "あそぶ", "あそぶ", font, 220,
-                new Vector2(0f, -520f), new Vector2(900f, 300f), component.Play);
+            TMP_Text challenge = UIBuildUtility.Label(c, "チャレンジ", "チャレンジ 0/3", font, 190, new Vector2(0f, -220f),
+                new Vector2(2100f, 230f), UIBuildUtility.TextLight);
+            (Image playImage, TMP_Text playLabel) = UIBuildUtility.PrimaryButton(c, "あそぶ", "あそぶ", font, 200,
+                new Vector2(0f, -560f), new Vector2(900f, 260f), component.Play);
 
             var so = new SerializedObject(component);
             so.FindProperty("sportId").stringValue = sportId;
@@ -417,6 +420,7 @@ namespace VRGame3.Hub.EditorTools
             so.FindProperty("medal").objectReferenceValue = medal;
             so.FindProperty("pointsText").objectReferenceValue = points;
             so.FindProperty("bestText").objectReferenceValue = best;
+            so.FindProperty("challengeText").objectReferenceValue = challenge;
             so.FindProperty("playButton").objectReferenceValue = playImage.GetComponent<Button>();
             so.FindProperty("playLabel").objectReferenceValue = playLabel;
             so.ApplyModifiedPropertiesWithoutUndo();

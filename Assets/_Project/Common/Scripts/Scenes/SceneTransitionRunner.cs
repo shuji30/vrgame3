@@ -30,6 +30,8 @@ namespace VRGame3.Common
             InputGate.Clear();
             InputGate.BlockGrab(this);
             GameSession.InProgress = false;
+            // 交代プレイの途中で出たら全員分を取りやめ、保存した身長・利き手に戻す
+            TurnSession.End();
             AsyncOperation load = SceneManager.LoadSceneAsync(sceneName, LoadSceneMode.Single);
             if (load == null)
             {

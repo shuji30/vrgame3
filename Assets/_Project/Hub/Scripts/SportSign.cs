@@ -26,6 +26,9 @@ namespace VRGame3.Hub
         [Tooltip("ベストの文字")]
         [SerializeField] private TMP_Text bestText;
 
+        [Tooltip("チャレンジのクリア数の文字")]
+        [SerializeField] private TMP_Text challengeText;
+
         [Tooltip("「あそぶ」ボタン")]
         [SerializeField] private Button playButton;
 
@@ -79,6 +82,15 @@ namespace VRGame3.Hub
             if (bestText != null)
             {
                 bestText.text = record.plays > 0 ? $"ベスト {record.best}" : "ベスト —";
+            }
+
+            if (challengeText != null)
+            {
+                int total = ChallengeCatalog.ForSport(sportId).Count;
+                int cleared = SaveStore.ClearedChallengeCount(sportId + ".");
+                challengeText.text = cleared >= total && total > 0
+                    ? $"チャレンジ {cleared}/{total} <color=#FFD24A>◎</color>"
+                    : $"チャレンジ {cleared}/{total}";
             }
         }
     }

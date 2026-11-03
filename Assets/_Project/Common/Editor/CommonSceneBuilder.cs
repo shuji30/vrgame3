@@ -378,6 +378,122 @@ namespace VRGame3.Common.EditorTools
         }
 
         /// <summary>
+        /// 汎用のパネル(見出し・本文・ボタン4つ。1000 × 760px)。交代の案内・順位表・チャレンジに使う。
+        /// position はパネルの中心、eye はプレイヤーの目。失敗したら null。
+        /// </summary>
+        public static ChoicePanel AddChoicePanel(Transform parent, Vector3 position, Vector3 eye)
+        {
+            TMP_FontAsset font = UIBuildUtility.GetOrCreateFontAsset();
+            if (font == null)
+            {
+                return null;
+            }
+
+            UIBuildUtility.EnsureEventSystem();
+            var holder = new GameObject("案内とえらぶパネル");
+            holder.transform.SetParent(parent, false);
+            var panel = holder.AddComponent<ChoicePanel>();
+
+            GameObject canvas = UIBuildUtility.CreateCanvas(holder.transform, "パネル", new Vector2(1000f, 760f), UIBuildUtility.Background);
+            canvas.transform.SetPositionAndRotation(position, Quaternion.LookRotation(position - eye, Vector3.up));
+            Transform c = canvas.transform;
+            TMP_Text title = UIBuildUtility.Label(c, "見出し", "見出し", font, 52, new Vector2(0f, 320f), new Vector2(960f, 70f),
+                UIBuildUtility.TextLight);
+            TMP_Text body = UIBuildUtility.Label(c, "本文", "", font, 36, new Vector2(0f, 120f), new Vector2(920f, 300f),
+                UIBuildUtility.TextLight);
+            body.textWrappingMode = TextWrappingModes.Normal;
+            body.alignment = TextAlignmentOptions.Top;
+
+            var images = new Image[4];
+            var texts = new TMP_Text[4];
+            UnityEngine.Events.UnityAction[] presses = { panel.OnButton0, panel.OnButton1, panel.OnButton2, panel.OnButton3 };
+            for (int i = 0; i < 4; i++)
+            {
+                // 2列 × 2段(上の段が先)
+                float x = i % 2 == 0 ? -235f : 235f;
+                float y = i < 2 ? -150f : -280f;
+                (Image image, TMP_Text text) = UIBuildUtility.NormalButton(c, $"ボタン{i + 1}", "", font, 36, new Vector2(x, y),
+                    new Vector2(440f, 100f), presses[i]);
+                images[i] = image;
+                texts[i] = text;
+            }
+
+            var audio = holder.AddComponent<AudioSource>();
+            audio.playOnAwake = false;
+            audio.spatialBlend = 0f;
+
+            var so = new SerializedObject(panel);
+            so.FindProperty("panelRoot").objectReferenceValue = canvas;
+            so.FindProperty("source").objectReferenceValue = audio;
+            so.FindProperty("turnChangeClip").objectReferenceValue = PlaceholderClip("SFX_TurnChange");
+            so.FindProperty("clearClip").objectReferenceValue = PlaceholderClip("SFX_ChallengeClear");
+            so.FindProperty("failClip").objectReferenceValue = PlaceholderClip("SFX_ChallengeFail");
+            so.FindProperty("titleText").objectReferenceValue = title;
+            so.FindProperty("bodyText").objectReferenceValue = body;
+            SetArray(so.FindProperty("buttonImages"), images);
+            SetArray(so.FindProperty("buttonTexts"), texts);
+            so.ApplyModifiedPropertiesWithoutUndo();
+            return panel;
+        }
+
+        /// <summary>
+        /// 「はじめに」パネルにモードの行(Y modeY)と強さ / 人数の行(Y optionY)を足し、ModeSelector でつなぐ(6.10)。
+        /// モードが4つなら幅 170、3つ以下なら 220 のボタンにする。startLabel と title は文字を差し替えるために渡す。
+        /// </summary>
+        public static ModeSelector AddModeRows(GameObject host, Transform canvas, TMP_FontAsset font, string sportId, SportMode[] modes,
+            float modeY, float optionY, TMP_Text startLabel, TMP_Text title)
+        {
+            var selector = host.AddComponent<ModeSelector>();
+            Color light = UIBuildUtility.TextLight;
+            UIBuildUtility.Label(canvas, "モードの見出し", "モード", font, 36, new Vector2(-360f, modeY), new Vector2(260f, 60f), light);
+            UIBuildUtility.Label(canvas, "つよさの見出し", "つよさ / にんずう", font, 26, new Vector2(-360f, optionY), new Vector2(260f, 60f), light);
+
+            UnityEngine.Events.UnityAction[] modeActions =
+                { selector.SelectMode0, selector.SelectMode1, selector.SelectMode2, selector.SelectMode3 };
+            bool four = modes.Length >= 4;
+            float[] xs = four ? new[] { -145f, 38f, 221f, 404f } : new[] { -110f, 125f, 360f };
+            Vector2 size = four ? new Vector2(170f, 76f) : new Vector2(220f, 76f);
+            var modeImages = new Image[modes.Length];
+            var modeTexts = new TMP_Text[modes.Length];
+            for (int i = 0; i < modes.Length; i++)
+            {
+                (modeImages[i], modeTexts[i]) = UIBuildUtility.NormalButton(canvas, $"モード{i + 1}", modes[i].ToString(), font,
+                    four ? 30 : 32, new Vector2(xs[i], modeY), size, modeActions[i]);
+            }
+
+            UnityEngine.Events.UnityAction[] optionActions = { selector.SelectOption0, selector.SelectOption1, selector.SelectOption2 };
+            float[] optionXs = { -110f, 125f, 360f };
+            var optionImages = new Image[3];
+            var optionTexts = new TMP_Text[3];
+            var optionButtons = new Button[3];
+            for (int i = 0; i < 3; i++)
+            {
+                (optionImages[i], optionTexts[i]) = UIBuildUtility.NormalButton(canvas, $"つよさ{i + 1}", "", font, 28,
+                    new Vector2(optionXs[i], optionY), new Vector2(220f, 76f), optionActions[i]);
+                optionButtons[i] = optionImages[i].GetComponent<Button>();
+            }
+
+            var so = new SerializedObject(selector);
+            so.FindProperty("sportId").stringValue = sportId;
+            SerializedProperty modeList = so.FindProperty("modes");
+            modeList.arraySize = modes.Length;
+            for (int i = 0; i < modes.Length; i++)
+            {
+                modeList.GetArrayElementAtIndex(i).enumValueIndex = (int)modes[i];
+            }
+
+            SetArray(so.FindProperty("modeImages"), modeImages);
+            SetArray(so.FindProperty("modeTexts"), modeTexts);
+            SetArray(so.FindProperty("optionImages"), optionImages);
+            SetArray(so.FindProperty("optionTexts"), optionTexts);
+            SetArray(so.FindProperty("optionButtons"), optionButtons);
+            so.FindProperty("startLabel").objectReferenceValue = startLabel;
+            so.FindProperty("titleText").objectReferenceValue = title;
+            so.ApplyModifiedPropertiesWithoutUndo();
+            return selector;
+        }
+
+        /// <summary>
         /// 腕前ポイントの決まりのアセット(Resources/SkillPointRules.asset)を、無ければ既定値で作る。
         /// Inspector で基準スコアなどを調整できるようにするため。
         /// </summary>

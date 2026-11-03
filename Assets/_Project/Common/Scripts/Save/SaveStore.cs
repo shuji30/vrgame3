@@ -12,7 +12,8 @@ namespace VRGame3.Common
     /// </summary>
     public static class SaveStore
     {
-        public const int CurrentVersion = 1;
+        // 2:クリアしたチャレンジの一覧を足した
+        public const int CurrentVersion = 2;
         private const string FileName = "save.json";
 
         private static SaveData data;
@@ -59,11 +60,53 @@ namespace VRGame3.Common
             return created;
         }
 
+        /// <summary>
+        /// オンの間は設定の変更をファイルに書かない(交代プレイで、その人の身長・利き手を保存しないため)。
+        /// </summary>
+        public static bool SuppressSettingsSave { get; set; }
+
         /// <summary>設定を変えたあとに呼んで保存する。</summary>
         public static void SaveSettings()
         {
             Settings.Clamp();
+            if (SuppressSettingsSave)
+            {
+                Changed?.Invoke();
+                return;
+            }
+
             Save();
+        }
+
+        /// <summary>チャレンジをクリアしたか。</summary>
+        public static bool IsChallengeCleared(string id) => Data.clearedChallenges.Contains(id);
+
+        /// <summary>チャレンジのクリアを記録して保存する。初めてのクリアなら true。</summary>
+        public static bool MarkChallengeCleared(string id)
+        {
+            if (Data.clearedChallenges.Contains(id))
+            {
+                return false;
+            }
+
+            Data.clearedChallenges.Add(id);
+            Save();
+            return true;
+        }
+
+        /// <summary>ID がその種目の頭(例 "bowling.")で始まるクリア済みのチャレンジの数。</summary>
+        public static int ClearedChallengeCount(string prefix)
+        {
+            int count = 0;
+            foreach (string id in Data.clearedChallenges)
+            {
+                if (id.StartsWith(prefix))
+                {
+                    count++;
+                }
+            }
+
+            return count;
         }
 
         /// <summary>
@@ -150,6 +193,7 @@ namespace VRGame3.Common
 
                 loaded.settings ??= new GameSettings();
                 loaded.records ??= new System.Collections.Generic.List<SportRecord>();
+                loaded.clearedChallenges ??= new System.Collections.Generic.List<string>();
                 loaded.records.RemoveAll(r => r == null || string.IsNullOrEmpty(r.sportId));
                 loaded.settings.Clamp();
                 loaded.version = CurrentVersion;
@@ -191,6 +235,7 @@ namespace VRGame3.Common
             data = null;
             Changed = null;
             saveDisabled = false;
+            SuppressSettingsSave = false;
         }
     }
 }

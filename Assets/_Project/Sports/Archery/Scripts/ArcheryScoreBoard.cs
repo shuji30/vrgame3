@@ -133,6 +133,38 @@ namespace VRGame3.Sports.Archery
             }
         }
 
+        /// <summary>チャレンジ中の表示(課題名と距離・進み具合・残りの本数)。</summary>
+        public void ShowChallenge(string title, string progress, int arrowsLeft)
+        {
+            if (roundText != null)
+            {
+                roundText.text = title;
+            }
+
+            foreach (TMP_Text slot in slotTexts)
+            {
+                if (slot != null)
+                {
+                    slot.text = string.Empty;
+                }
+            }
+
+            if (roundsText != null)
+            {
+                roundsText.text = progress;
+            }
+
+            if (totalText != null)
+            {
+                totalText.text = string.Empty;
+            }
+
+            if (leftText != null)
+            {
+                leftText.text = $"のこり {arrowsLeft}本";
+            }
+        }
+
         /// <summary>的の横に点数を出す(0.2m だけゆっくり浮かせて消す)。</summary>
         public void ShowHit(ArcheryTarget target, int score, bool isX, bool onTarget)
         {
