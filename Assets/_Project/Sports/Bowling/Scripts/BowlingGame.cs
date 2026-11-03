@@ -19,6 +19,7 @@ namespace VRGame3.Sports.Bowling
             Ready,
             Rolling,
             Settling,
+            Clearing,
             GameOver,
         }
 
@@ -49,11 +50,17 @@ namespace VRGame3.Sports.Bowling
         [SerializeField] private float maxRollTime = 12f;
 
         [Tooltip("投球が終わってから、倒れた本数を数えるまで待つ秒数(ピンが落ち着くのを待つ)")]
-        [SerializeField] private float settleTime = 2.5f;
+        [SerializeField] private float settleTime = 2f;
+
+        [Tooltip("記録してから、倒れたピンを片付けてボールを戻すまで待つ秒数")]
+        [SerializeField] private float clearDelay = 1f;
+
+        [Tooltip("ストライクのとき、片付けるまで待つ秒数(倒れたピンが光る演出を見せる時間)")]
+        [SerializeField] private float strikeClearDelay = 2.2f;
 
         /// <summary>
         /// 1投の記録が終わったとき。引数はフレーム(0 始まり)、何投目か(0 始まり)、倒した本数、表示記号。
-        /// 演出や効果音はここにつなぐ。
+        /// 演出や効果音はここにつなぐ。この時点では倒れたピンはまだ片付けておらず、PinSetter から調べられる。
         /// </summary>
         public event Action<int, int, int, string> RollRecorded;
 
@@ -67,6 +74,8 @@ namespace VRGame3.Sports.Bowling
         private float rollTimer;
         private float stoppedTimer;
         private float settleTimer;
+        private float clearTimer;
+        private bool resetRackOnClear;
 
         /// <summary>いまのスコア表。</summary>
         public BowlingScoreSheet Sheet => sheet;
@@ -155,6 +164,14 @@ namespace VRGame3.Sports.Bowling
                     }
 
                     break;
+                case State.Clearing:
+                    clearTimer -= Time.deltaTime;
+                    if (clearTimer <= 0f)
+                    {
+                        ClearPins();
+                    }
+
+                    break;
             }
         }
 
@@ -194,26 +211,18 @@ namespace VRGame3.Sports.Bowling
             state = State.Settling;
         }
 
+        /// <summary>
+        /// 倒れた本数を記録してスコア板を更新し、演出(RollRecorded)に知らせる。
+        /// ピンはまだ倒れたまま残しておき、clearDelay 秒後に ClearPins で片付ける。
+        /// </summary>
         private void RecordRoll()
         {
             int frame = sheet.CurrentFrame;
             int rollIndex = sheet.GetRolls(frame).Count;
             int knocked = pinSetter.CountKnockedSinceMark();
 
-            bool resetRack = sheet.AddRoll(knocked);
+            resetRackOnClear = sheet.AddRoll(knocked);
             string symbol = sheet.GetRollSymbol(frame, rollIndex);
-
-            if (resetRack)
-            {
-                pinSetter.ResetRack();
-            }
-            else
-            {
-                pinSetter.SweepKnockedPins();
-            }
-
-            ReturnBall(currentBall);
-            currentBall = null;
             scoreBoard.Refresh(sheet);
 
             if (symbol == "X")
@@ -226,6 +235,27 @@ namespace VRGame3.Sports.Bowling
             }
 
             RollRecorded?.Invoke(frame, rollIndex, knocked, symbol);
+
+            clearTimer = symbol == "X" ? strikeClearDelay : clearDelay;
+            state = State.Clearing;
+        }
+
+        /// <summary>
+        /// 倒れたピンを片付けるか10本を並べ直し、ボールを戻して次の投球を待つ。
+        /// </summary>
+        private void ClearPins()
+        {
+            if (resetRackOnClear)
+            {
+                pinSetter.ResetRack();
+            }
+            else
+            {
+                pinSetter.SweepKnockedPins();
+            }
+
+            ReturnBall(currentBall);
+            currentBall = null;
 
             if (sheet.IsGameOver)
             {

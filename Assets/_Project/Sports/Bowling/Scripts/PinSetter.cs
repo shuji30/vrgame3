@@ -54,6 +54,19 @@ namespace VRGame3.Sports.Bowling
             return count;
         }
 
+        /// <summary>MarkStandingPins のあとに倒れたピンを results に入れる(演出で使う)。</summary>
+        public void GetKnockedSinceMark(List<BowlingPin> results)
+        {
+            results.Clear();
+            foreach (BowlingPin pin in standingAtStart)
+            {
+                if (pin.IsKnockedDown)
+                {
+                    results.Add(pin);
+                }
+            }
+        }
+
         /// <summary>倒れたピンを片付け、立っているピンの揺れを止める。</summary>
         public void SweepKnockedPins()
         {

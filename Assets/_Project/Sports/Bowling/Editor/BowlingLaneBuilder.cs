@@ -152,6 +152,7 @@ namespace VRGame3.Sports.Bowling.EditorTools
             gameSo.ApplyModifiedPropertiesWithoutUndo();
             BowlingAudioBuilder.AddGameSounds(root, game, new Vector3(RidgeX, 2.85f, 2.5f),
                 RackPosition + new Vector3(0f, RackHeight, 0f));
+            BowlingEffectsBuilder.AddEffects(root, game, pinSetter, palette.Pin, MaterialFolder, PlayerLaneX, HeadPinDistance + 0.5f);
 
             Material arc = SceneBuildUtility.GetOrCreateArcMaterial(MaterialFolder, "B_TeleportArc");
             List<string> warnings = SceneBuildUtility.SetUpXROrigin(arc, palette.Reticle, PlayerPosition, Quaternion.identity,
