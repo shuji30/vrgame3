@@ -38,6 +38,10 @@ namespace VRGame3.Sports.Bowling.EditorTools
         private const float SideBoardThickness = 0.05f;
         private const float PinSpacing = 0.305f;
         private const float Bottom = -PitDepth - 0.1f;
+
+        // 助走路の床の上面。レーン(上面 Y 0)と同じ高さで突き合わせると、転がるボールが
+        // 継ぎ目でレーンの箱の角に引っかかる(見えない壁に当たったように止まる)ので、わずかに高くする
+        private const float ApproachTop = 0.003f;
         private const float HalfLane = LaneWidth / 2f;
         private const float GutterOuter = HalfLane + GutterWidth;
         private const float LaneOuter = GutterOuter + SideBoardThickness;
@@ -154,6 +158,7 @@ namespace VRGame3.Sports.Bowling.EditorTools
             gameSo.ApplyModifiedPropertiesWithoutUndo();
             BowlingAudioBuilder.AddGameSounds(root, game, new Vector3(RidgeX, 2.85f, 2.5f),
                 RackPosition + new Vector3(0f, RackHeight, 0f));
+            BowlingAudioBuilder.AddPinCrash(root, balls, new Vector3(PlayerLaneX, 0.2f, HeadPinDistance + 0.5f));
             BowlingEffectsBuilder.AddEffects(root, game, pinSetter, palette.Pin, MaterialFolder, PlayerLaneX, HeadPinDistance + 0.5f);
 
             Material arc = SceneBuildUtility.GetOrCreateArcMaterial(MaterialFolder, "B_TeleportArc");
@@ -251,10 +256,10 @@ namespace VRGame3.Sports.Bowling.EditorTools
         private static void BuildFloor(Transform parent, BowlingBuildPalette palette)
         {
             GameObject playerFloor = Block(parent, "助走路(テレポートできる床)", new Vector3(InnerMinX, -0.1f, InnerMinZ),
-                new Vector3(TeleportMaxX, 0f, 0f), palette.WoodLight, null);
+                new Vector3(TeleportMaxX, ApproachTop, 0f), palette.WoodLight, null);
             playerFloor.AddComponent<TeleportArea>();
 
-            Block(parent, "CPU 側の助走路", new Vector3(TeleportMaxX, -0.1f, InnerMinZ), new Vector3(InnerMaxX, 0f, 0f),
+            Block(parent, "CPU 側の助走路", new Vector3(TeleportMaxX, -0.1f, InnerMinZ), new Vector3(InnerMaxX, ApproachTop, 0f),
                 palette.WoodLight, null);
             Block(parent, "左の床", new Vector3(InnerMinX, -0.1f, 0f), new Vector3(PlayerLaneX - LaneOuter, 0f, InnerMaxZ),
                 palette.Wood, null);
@@ -375,7 +380,8 @@ namespace VRGame3.Sports.Bowling.EditorTools
 
         private static Transform BuildFoulLine(Transform parent, string name, float x, BowlingBuildPalette palette)
         {
-            GameObject line = SceneBuildUtility.CreatePrimitive(name, PrimitiveType.Cube, new Vector3(x, 0.001f, 0f),
+            // 助走路の床(わずかに高い)の上に、手前側へ寄せて置く
+            GameObject line = SceneBuildUtility.CreatePrimitive(name, PrimitiveType.Cube, new Vector3(x, ApproachTop + 0.001f, -0.01f),
                 new Vector3(LaneWidth + GutterWidth * 2f, 0.002f, 0.02f), palette.Line, false);
             MakeStatic(line, parent);
             return line.transform;

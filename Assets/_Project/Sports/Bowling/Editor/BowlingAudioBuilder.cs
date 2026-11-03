@@ -23,6 +23,10 @@ namespace VRGame3.Sports.Bowling.EditorTools
         private const float BirdVolume = 0.08f;
         private const float WindVolume = 0.04f;
 
+        // ピンの崩れる音(クラッシュ)は効果音でいちばん大きく -3dB ≈ 0.7
+        private const float CrashVolume = 0.7f;
+        private const float PinMinDistance = 8f;
+
         /// <summary>仮の音のファイルを読み込み直す(新しく置いた WAV を Unity に取り込ませる)。</summary>
         public static void ImportClips()
         {
@@ -69,7 +73,8 @@ namespace VRGame3.Sports.Bowling.EditorTools
         /// <summary>ピン:ピン同士(ボールも含む)と、床などに当たる音の2系統。18m 先でも届くよう減衰を緩める。</summary>
         public static void AddPinAudio(GameObject pin)
         {
-            AudioSource source = AddSource(pin, 3f, 40f);
+            // 助走路(約 18m 先)から聞いても小さくなりすぎないよう、減衰の始まりを遠くする
+            AudioSource source = AddSource(pin, PinMinDistance, 45f);
             var impact = pin.AddComponent<ImpactSound>();
             var so = new SerializedObject(impact);
             SetClips(so.FindProperty("clipsAgainstSounding"), Clips("SFX_PinHit_", 4));
@@ -104,6 +109,28 @@ namespace VRGame3.Sports.Bowling.EditorTools
             so.FindProperty("returnSource").objectReferenceValue = returnSource;
             so.FindProperty("returnClip").objectReferenceValue = Clip("SFX_BallReturn");
             so.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        /// <summary>
+        /// ボールがピンに当たった瞬間の崩れる音。音源を1つ置き、各ボールの PinCrashSound から当たった位置で鳴らす。
+        /// </summary>
+        public static void AddPinCrash(GameObject root, IEnumerable<ThrowableObject> balls, Vector3 pinDeckPosition)
+        {
+            var crashObject = new GameObject("ピンが崩れる音の音源");
+            crashObject.transform.SetParent(root.transform, false);
+            crashObject.transform.position = pinDeckPosition;
+            AudioSource crashSource = AddSource(crashObject, PinMinDistance, 45f);
+
+            AudioClip[] clips = Clips("SFX_PinCrash_", 3);
+            foreach (ThrowableObject ball in balls)
+            {
+                var crash = ball.gameObject.AddComponent<PinCrashSound>();
+                var so = new SerializedObject(crash);
+                SetClips(so.FindProperty("clips"), clips);
+                so.FindProperty("source").objectReferenceValue = crashSource;
+                so.FindProperty("volume").floatValue = CrashVolume;
+                so.ApplyModifiedPropertiesWithoutUndo();
+            }
         }
 
         /// <summary>
