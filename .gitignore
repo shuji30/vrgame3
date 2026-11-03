@@ -64,3 +64,7 @@ desktop.ini
 # ユーザーが用意したモデル(girl.vrm。作者本人のみ利用可・改変禁止のため、リポジトリに入れない)
 Assets/ThirdParty/UserModels/
 Assets/ThirdParty/UserModels.meta
+
+# Unity が異常終了したときの復元用のシーン
+Assets/_Recovery/
+Assets/_Recovery.meta
