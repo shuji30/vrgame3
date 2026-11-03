@@ -85,9 +85,12 @@ namespace VRGame3.Sports.TableTennis
         private bool gentleServe;
         private float serveHitTime;
 
+        private float nameTagBaseY;
+
         private void Awake()
         {
             baseY = body != null ? body.position.y : 0f;
+            nameTagBaseY = nameTagBack != null ? nameTagBack.transform.position.y : 0f;
             eyeScales = new Vector3[eyes.Length];
             for (int i = 0; i < eyes.Length; i++)
             {
@@ -410,6 +413,12 @@ namespace VRGame3.Sports.TableTennis
             // 得点は 0.12m 跳ねて目を細め、失点は少し沈んで頭を前へ 20° 傾ける(docs/art-direction.md の反応)
             float y = reactJump > 0f ? k * 0.12f : -k * 0.05f;
             body.position = new Vector3(p.x, baseY + y, p.z);
+            // 名札は体の左右の動きにだけ付いて行き、跳ねには付いて行かない
+            if (nameTagBack != null)
+            {
+                Transform tag = nameTagBack.transform;
+                tag.position = new Vector3(tag.position.x, nameTagBaseY, tag.position.z);
+            }
             bool done = reactTimer <= 0f;
             for (int i = 0; i < eyes.Length; i++)
             {

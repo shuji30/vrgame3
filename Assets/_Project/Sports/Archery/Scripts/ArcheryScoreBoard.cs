@@ -12,6 +12,12 @@ namespace VRGame3.Sports.Archery
     public class ArcheryScoreBoard : MonoBehaviour
     {
         [Header("小型スコア板")]
+        [Tooltip("小型スコア板の板(左利きのときは左右を入れ替える)")]
+        [SerializeField] private Transform smallBoard;
+
+        [Tooltip("プレイヤーの目の位置(板をそちらへ向ける)")]
+        [SerializeField] private Vector3 eye = new Vector3(0f, 1.6f, -0.75f);
+
         [Tooltip("「ラウンド2 20m」の文字")]
         [SerializeField] private TMP_Text roundText;
 
@@ -80,6 +86,21 @@ namespace VRGame3.Sports.Archery
             {
                 bannerText.gameObject.SetActive(false);
             }
+        }
+
+        /// <summary>
+        /// 小型スコア板を、弦を引く手の側の前(手の届かない所)に置く。右利きは右(X +)、左利きは左(X -)。
+        /// </summary>
+        public void PlaceForHand(bool leftHanded)
+        {
+            if (smallBoard == null)
+            {
+                return;
+            }
+
+            Vector3 p = smallBoard.position;
+            p.x = Mathf.Abs(p.x) * (leftHanded ? -1f : 1f);
+            smallBoard.SetPositionAndRotation(p, Quaternion.LookRotation(p - eye, Vector3.up));
         }
 
         /// <summary>小型スコア板を、いまのラウンドで書き直す。</summary>

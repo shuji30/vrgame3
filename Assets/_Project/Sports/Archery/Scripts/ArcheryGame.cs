@@ -284,6 +284,7 @@ namespace VRGame3.Sports.Archery
             XRBaseInputInteractor bowInteractor = leftHanded ? rightInteractor : leftInteractor;
             XRBaseInputInteractor drawInteractor = leftHanded ? leftInteractor : rightInteractor;
             bow.AimAssist = SaveStore.Settings.aimAssist;
+            scoreBoard.PlaceForHand(leftHanded);
             bow.Equip(bowHand, drawHand, bowInteractor, drawInteractor, leftHanded);
         }
 

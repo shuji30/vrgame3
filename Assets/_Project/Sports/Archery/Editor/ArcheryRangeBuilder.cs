@@ -537,6 +537,7 @@ namespace VRGame3.Sports.Archery.EditorTools
                 0.25f, light);
 
             var so = new SerializedObject(board);
+            so.FindProperty("smallBoard").objectReferenceValue = small.transform;
             so.FindProperty("roundText").objectReferenceValue = round;
             SetArray(so.FindProperty("slotTexts"), slotTexts);
             SetArray(so.FindProperty("slotImages"), slotImages);

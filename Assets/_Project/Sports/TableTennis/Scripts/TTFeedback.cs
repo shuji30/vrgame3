@@ -12,8 +12,8 @@ namespace VRGame3.Sports.TableTennis
         [Tooltip("進行役")]
         [SerializeField] private TableTennisGame game;
 
-        [Tooltip("当たった点で鳴らす AudioSource(鳴らす前に当たった点へ動かす)")]
-        [SerializeField] private AudioSource hitSource;
+        [Tooltip("当たった点で鳴らす AudioSource(鳴らす前に当たった点へ動かす。続けて鳴っても前の音が動かないよう、順番に使う)")]
+        [SerializeField] private AudioSource[] hitSources = new AudioSource[0];
 
         [Tooltip("得点・勝敗を鳴らす AudioSource(2D)")]
         [SerializeField] private AudioSource uiSource;
@@ -65,6 +65,8 @@ namespace VRGame3.Sports.TableTennis
 
         [Tooltip("得点・勝敗の音の音量")]
         [SerializeField] private float uiVolume = 0.25f;
+
+        private int nextSource;
 
         private void OnEnable()
         {
@@ -138,7 +140,14 @@ namespace VRGame3.Sports.TableTennis
 
         private void PlayAt(Vector3 point, AudioClip[] clips, float volume)
         {
-            if (hitSource == null || clips.Length == 0)
+            if (hitSources.Length == 0 || clips.Length == 0)
+            {
+                return;
+            }
+
+            AudioSource hitSource = hitSources[nextSource];
+            nextSource = (nextSource + 1) % hitSources.Length;
+            if (hitSource == null)
             {
                 return;
             }

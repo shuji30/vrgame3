@@ -502,8 +502,43 @@ namespace VRGame3.Common.EditorTools
         {
             const string folder = "Assets/_Project/Common/Resources";
             const string path = folder + "/SkillPointRules.asset";
-            if (AssetDatabase.LoadAssetAtPath<SkillPointRules>(path) != null)
+            var existing = AssetDatabase.LoadAssetAtPath<SkillPointRules>(path);
+            if (existing != null)
             {
+                // 種目が増えたときは、足りない行を既定値で足す(調整した値は変えない)
+                var fresh = ScriptableObject.CreateInstance<SkillPointRules>();
+                var target = new SerializedObject(existing);
+                var source = new SerializedObject(fresh);
+                SerializedProperty have = target.FindProperty("sports");
+                SerializedProperty all = source.FindProperty("sports");
+                for (int i = 0; i < all.arraySize; i++)
+                {
+                    string id = all.GetArrayElementAtIndex(i).FindPropertyRelative("sportId").stringValue;
+                    bool found = false;
+                    for (int j = 0; j < have.arraySize; j++)
+                    {
+                        found |= have.GetArrayElementAtIndex(j).FindPropertyRelative("sportId").stringValue == id;
+                    }
+
+                    if (!found)
+                    {
+                        have.arraySize++;
+                        SerializedProperty added = have.GetArrayElementAtIndex(have.arraySize - 1);
+                        SerializedProperty from = all.GetArrayElementAtIndex(i);
+                        added.FindPropertyRelative("sportId").stringValue = id;
+                        added.FindPropertyRelative("divisor").floatValue = from.FindPropertyRelative("divisor").floatValue;
+                        SerializedProperty scores = from.FindPropertyRelative("baseScores");
+                        SerializedProperty to = added.FindPropertyRelative("baseScores");
+                        to.arraySize = scores.arraySize;
+                        for (int k = 0; k < scores.arraySize; k++)
+                        {
+                            to.GetArrayElementAtIndex(k).intValue = scores.GetArrayElementAtIndex(k).intValue;
+                        }
+                    }
+                }
+
+                target.ApplyModifiedPropertiesWithoutUndo();
+                Object.DestroyImmediate(fresh);
                 return;
             }
 

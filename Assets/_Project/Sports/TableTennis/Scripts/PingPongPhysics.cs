@@ -327,6 +327,27 @@ namespace VRGame3.Sports.TableTennis
         }
 
         /// <summary>
+        /// 打った球がネットの面を通るときに、ネットの上(白帯の上端 + 球の半径)をどれだけ上回るか(m)。
+        /// ネットの面を通らない球は大きな値を返す。
+        /// </summary>
+        public static float NetClearance(Vector3 p, Vector3 v, Settings s, Table table)
+        {
+            float side = Mathf.Sign(p.z - table.Center.z);
+            for (float time = 0f; time < 2f; time += s.step)
+            {
+                v += Vector3.down * (s.gravity * s.step);
+                v -= v * (s.drag * v.magnitude * s.step);
+                p += v * s.step;
+                if (Mathf.Sign(p.z - table.Center.z) != side)
+                {
+                    return p.y - (table.Top + table.NetHeight + s.ballRadius);
+                }
+            }
+
+            return float.MaxValue;
+        }
+
+        /// <summary>
         /// from から打って、target(台の上の点)に落ちる速さを求める。水平の速さ horizontalSpeed を基準に、
         /// 縦の速さを二分探索で合わせる。ネットを越えられないときは、水平の速さを少しずつ落として高く打つ。
         /// 見つからなければ false(そのときも一番近い速さを返す)。
@@ -372,6 +393,12 @@ namespace VRGame3.Sports.TableTennis
                     ok = landed && Mathf.Abs(got - want) < 0.05f;
                     if (ok)
                     {
+                        // ネットの上を 0.03m 以上の余裕で越えなければ、水平の速さを落として高く打ち直す
+                        if (NetClearance(from, v, s, table) < 0.03f)
+                        {
+                            ok = false;
+                        }
+
                         break;
                     }
                 }

@@ -492,12 +492,17 @@ namespace VRGame3.Sports.TableTennis.EditorTools
             var holder = new GameObject("音");
             holder.transform.SetParent(root, false);
             var feedback = holder.AddComponent<TTFeedback>();
-            AudioSource hit = Source(holder, "当たった点の音", true, 2f, 25f);
+            var hits = new Object[3];
+            for (int i = 0; i < hits.Length; i++)
+            {
+                hits[i] = Source(holder, $"当たった点の音{i + 1}", true, 2f, 25f);
+            }
+
             AudioSource ui = Source(holder, "得点の音", false, 1f, 30f);
 
             var so = new SerializedObject(feedback);
             so.FindProperty("game").objectReferenceValue = game;
-            so.FindProperty("hitSource").objectReferenceValue = hit;
+            SetArray(so.FindProperty("hitSources"), hits);
             so.FindProperty("uiSource").objectReferenceValue = ui;
             SetArray(so.FindProperty("paddleSoft"), Clips("SFX_TT_Paddle_Soft_", 2));
             SetArray(so.FindProperty("paddleMid"), Clips("SFX_TT_Paddle_Mid_", 2));
