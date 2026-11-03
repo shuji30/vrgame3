@@ -57,6 +57,7 @@ namespace VRGame3.Common
                 }, true),
                 new ChoicePanel.Option("ハブへ", () => SceneTransition.Load(SceneTransition.HubScene)));
             panel.PlaySound(panel.ClearClip);
+            panel.Celebrate();
         }
 
         /// <summary>チャレンジの一覧を出す。選んだら onSelect(ID)、「もどる」で onBack。</summary>
@@ -90,6 +91,11 @@ namespace VRGame3.Common
                 new ChoicePanel.Option("ほかのチャレンジ", other),
                 new ChoicePanel.Option("ハブへ", () => SceneTransition.Load(SceneTransition.HubScene)));
             panel.PlaySound(cleared ? panel.ClearClip : panel.FailClip);
+            if (cleared)
+            {
+                panel.Celebrate();
+            }
+
             RestReminder.AtBreak();
         }
     }

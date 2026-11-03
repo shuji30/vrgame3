@@ -182,6 +182,10 @@ namespace VRGame3.Sports.Bowling.EditorTools
             // 10フレームのあとの結果の表示(M2。docs/art-direction.md 6.9)
             ResultPanel resultPanel = CommonSceneBuilder.AddResultPanel(root.transform, new Vector3(0f, 1.5f, 2f),
                 PlayerPosition + new Vector3(0f, 1.6f, 0f));
+            // ピン置き場の上から降らせる(結果・チャレンジのクリア・順位表)
+            ChoicePanel bowlingChoice = Object.FindAnyObjectByType<ChoicePanel>();
+            CommonSceneBuilder.AddCelebration(root.transform, new Vector3(PlayerLaneX + 0.9f, 2.6f, HeadPinDistance + 0.5f), 200,
+                resultPanel, bowlingChoice);
             var startPanel = root.GetComponent<BowlingStartPanel>();
             if (resultPanel != null && startPanel != null)
             {
@@ -537,6 +541,14 @@ namespace VRGame3.Sports.Bowling.EditorTools
             var gameSo = new SerializedObject(game);
             gameSo.FindProperty("cpu").objectReferenceValue = cpu;
             gameSo.ApplyModifiedPropertiesWithoutUndo();
+
+            var sounds = root.GetComponent<BowlingSounds>();
+            if (sounds != null)
+            {
+                var soundSo = new SerializedObject(sounds);
+                soundSo.FindProperty("cpu").objectReferenceValue = cpu;
+                soundSo.ApplyModifiedPropertiesWithoutUndo();
+            }
         }
 
         private static List<ThrowableObject> BuildBallRack(Transform parent, BowlingBuildPalette palette, PhysicsMaterial ballPhysics,

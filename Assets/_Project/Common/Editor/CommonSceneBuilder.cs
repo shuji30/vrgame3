@@ -566,6 +566,29 @@ namespace VRGame3.Common.EditorTools
         }
 
         /// <summary>
+        /// 結果・チャレンジのクリア・順位表で出す紙吹雪を at に作り、結果のパネルとえらぶパネルにつなぐ(docs/art-direction.md 7.3・7.6)。
+        /// </summary>
+        public static void AddCelebration(Transform parent, Vector3 at, int count, ResultPanel result, ChoicePanel choice)
+        {
+            ParticleSystem confetti = ParticleBuildUtility.Burst(parent, "お祝いの紙吹雪", at, count,
+                new[] { "#FFD24A", "#FF7F6B", "#3AA7FF", "#6CC36A", "#FFFDF7" }, new Vector2(1.6f, 2.2f), new Vector2(1.5f, 3.5f),
+                new Vector2(0.05f, 0.09f), 0.35f, 0.5f, true, false, true);
+            if (result != null)
+            {
+                var so = new SerializedObject(result);
+                so.FindProperty("celebration").objectReferenceValue = confetti;
+                so.ApplyModifiedPropertiesWithoutUndo();
+            }
+
+            if (choice != null)
+            {
+                var so = new SerializedObject(choice);
+                so.FindProperty("celebration").objectReferenceValue = confetti;
+                so.ApplyModifiedPropertiesWithoutUndo();
+            }
+        }
+
+        /// <summary>
         /// 腕前ポイントの決まりのアセット(Resources/SkillPointRules.asset)を、無ければ既定値で作る。
         /// Inspector で基準スコアなどを調整できるようにするため。
         /// </summary>

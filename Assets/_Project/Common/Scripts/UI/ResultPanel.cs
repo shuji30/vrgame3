@@ -60,6 +60,13 @@ namespace VRGame3.Common
         // 結果を出している状態か(メニューが出ている間は隠すが、この値は変えない)
         private bool shown;
 
+        /// <summary>ベスト更新・ランクアップのときの紙吹雪をつなぐ(各会場の組み立てから)。</summary>
+        public ParticleSystem Celebration
+        {
+            get => celebration;
+            set => celebration = value;
+        }
+
         /// <summary>結果が出ているか。</summary>
         public bool IsOpen => shown;
 

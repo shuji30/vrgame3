@@ -106,6 +106,8 @@ namespace VRGame3.Sports.Archery.EditorTools
 
             ChoicePanel choicePanel = CommonSceneBuilder.AddChoicePanel(root.transform, new Vector3(0f, 1.3f, 0.35f), Eye);
             BuildStartPanel(root.transform, font, game, choicePanel);
+            // 的のあたり(10m 先の上)から降らせる
+            CommonSceneBuilder.AddCelebration(root.transform, new Vector3(0f, 3f, 10f), 200, resultPanel, choicePanel);
             BuildFeedback(root.transform, game, target, scoreBoard);
             BuildAmbient(root.transform);
 

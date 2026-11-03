@@ -61,6 +61,9 @@ namespace VRGame3.Common
         [Range(0f, 1f)]
         [SerializeField] private float volume = 0.3f;
 
+        [Tooltip("チャレンジのクリア・順位表で出す紙吹雪(なくてもよい)")]
+        [SerializeField] private ParticleSystem celebration;
+
         [Tooltip("交代の案内の音")]
         [SerializeField] private AudioClip turnChangeClip;
 
@@ -75,6 +78,15 @@ namespace VRGame3.Common
         public AudioClip FailClip => failClip;
 
         private readonly Action[] actions = new Action[4];
+
+        /// <summary>紙吹雪を出す(チャレンジのクリア・順位表)。</summary>
+        public void Celebrate()
+        {
+            if (celebration != null)
+            {
+                celebration.Play();
+            }
+        }
 
         /// <summary>知らせの音を鳴らす(クリア・交代など)。</summary>
         public void PlaySound(AudioClip clip)

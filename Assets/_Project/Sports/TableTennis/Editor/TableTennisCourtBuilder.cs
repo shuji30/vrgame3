@@ -115,6 +115,8 @@ namespace VRGame3.Sports.TableTennis.EditorTools
             ChoicePanel choicePanel = CommonSceneBuilder.AddChoicePanel(root.transform, new Vector3(0f, 1.4f, -0.95f), Eye);
             GameObject aimTargets = BuildAimTargets(table);
             BuildStartPanel(root.transform, font, game, choicePanel, aimTargets);
+            // 卓球場は狭いので、生け垣の上(開始位置から約 7.6m)から 80個だけ降らせる
+            CommonSceneBuilder.AddCelebration(root.transform, new Vector3(0f, 2.6f, 5.4f), 80, resultPanel, choicePanel);
             BuildFeedback(root.transform, game);
             BuildAmbient(root.transform);
 

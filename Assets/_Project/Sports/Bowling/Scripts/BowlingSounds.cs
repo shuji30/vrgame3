@@ -12,6 +12,13 @@ namespace VRGame3.Sports.Bowling
         [Tooltip("進行役")]
         [SerializeField] private BowlingGame game;
 
+        [Tooltip("CPU 対戦の相手(CPU のストライク・スペアも小さく鳴らす)")]
+        [SerializeField] private BowlingCpu cpu;
+
+        [Tooltip("CPU のジングルの音量の倍率(-8dB ≈ 0.4)")]
+        [Range(0f, 1f)]
+        [SerializeField] private float cpuJingleScale = 0.4f;
+
         [Header("ジングル(スコア板から鳴らす)")]
         [Tooltip("ジングルを鳴らす AudioSource(スコア板に付ける)")]
         [SerializeField] private AudioSource jingleSource;
@@ -79,6 +86,11 @@ namespace VRGame3.Sports.Bowling
                 game.RollRecorded += OnRollRecorded;
                 game.BallReturned += OnBallReturned;
             }
+
+            if (cpu != null)
+            {
+                cpu.RollRecorded += OnCpuRoll;
+            }
         }
 
         private void OnDisable()
@@ -87,6 +99,11 @@ namespace VRGame3.Sports.Bowling
             {
                 game.RollRecorded -= OnRollRecorded;
                 game.BallReturned -= OnBallReturned;
+            }
+
+            if (cpu != null)
+            {
+                cpu.RollRecorded -= OnCpuRoll;
             }
         }
 
@@ -110,6 +127,18 @@ namespace VRGame3.Sports.Bowling
             else if (pins == 0)
             {
                 PlayJingle(gutterClip, gutterVolume);
+            }
+        }
+
+        private void OnCpuRoll(int knocked, string symbol)
+        {
+            if (symbol == "X")
+            {
+                PlayJingle(strikeClip, strikeVolume * cpuJingleScale);
+            }
+            else if (symbol == "/")
+            {
+                PlayJingle(spareClip, spareVolume * cpuJingleScale);
             }
         }
 
