@@ -93,8 +93,7 @@ namespace VRGame3.Common
             var list = Resources.Load<TextAsset>("Voice/lines");
             if (list != null)
             {
-                voiceLines = list.text.Replace("", string.Empty).Split('
-');
+                voiceLines = list.text.Replace("\r", string.Empty).Split('\n');
             }
         }
 
