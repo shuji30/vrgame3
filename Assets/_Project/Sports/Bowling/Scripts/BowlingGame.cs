@@ -52,6 +52,20 @@ namespace VRGame3.Sports.Bowling
         [Tooltip("投球が終わってから、倒れた本数を数えるまで待つ秒数(ピンが落ち着くのを待つ)")]
         [SerializeField] private float settleTime = 2f;
 
+        [Header("投げ損ねの救済")]
+        [Tooltip("ファウルラインの手前で止まったボールを、自動で転がし直すか")]
+        [SerializeField] private bool rescueEnabled = true;
+
+        [Tooltip("前への速さ(m/秒)がこれ以上で離したボールだけを救済する(そっと置いただけのときは救済しない)")]
+        [SerializeField] private float rescueMinForwardSpeed = 0.5f;
+
+        [Tooltip("救済で転がし直す速さ(m/秒)")]
+        [SerializeField] private float rescueSpeed = 4f;
+
+        [Tooltip("救済するとき、レーンの中心から左右にこの距離(m)より外にあれば、内側へ寄せてから転がす")]
+        [SerializeField] private float rescueMaxOffset = 0.35f;
+
+        [Header("片付け")]
         [Tooltip("記録してから、倒れたピンを片付けてボールを戻すまで待つ秒数")]
         [SerializeField] private float clearDelay = 1f;
 
@@ -74,6 +88,8 @@ namespace VRGame3.Sports.Bowling
         private float rollTimer;
         private float stoppedTimer;
         private float settleTimer;
+        private float maxForwardSpeed;
+        private bool rescued;
         private float clearTimer;
         private bool resetRackOnClear;
 
@@ -145,6 +161,8 @@ namespace VRGame3.Sports.Bowling
             crossedFoulLine = false;
             rollTimer = 0f;
             stoppedTimer = 0f;
+            maxForwardSpeed = 0f;
+            rescued = false;
             pinSetter.MarkStandingPins();
             state = State.Rolling;
         }
@@ -192,10 +210,16 @@ namespace VRGame3.Sports.Bowling
 
             rollTimer += Time.deltaTime;
             Rigidbody body = currentBall.GetComponent<Rigidbody>();
+            maxForwardSpeed = Mathf.Max(maxForwardSpeed, Vector3.Dot(body.linearVelocity, foulLine.forward));
             stoppedTimer = body.linearVelocity.magnitude < stopSpeed ? stoppedTimer + Time.deltaTime : 0f;
 
             bool reachedPit = distance >= pitDistance;
             if (!reachedPit && rollTimer < maxRollTime && stoppedTimer < stopTime)
+            {
+                return;
+            }
+
+            if (!crossedFoulLine && stoppedTimer >= stopTime && TryRescue(body))
             {
                 return;
             }
@@ -215,6 +239,33 @@ namespace VRGame3.Sports.Bowling
         /// 倒れた本数を記録してスコア板を更新し、演出(RollRecorded)に知らせる。
         /// ピンはまだ倒れたまま残しておき、clearDelay 秒後に ClearPins で片付ける。
         /// </summary>
+        /// <summary>
+        /// 投げたつもりのボールがファウルラインの手前で止まったら、レーンの向きに転がし直す(1投につき1回)。
+        /// </summary>
+        private bool TryRescue(Rigidbody body)
+        {
+            if (!rescueEnabled || rescued || maxForwardSpeed < rescueMinForwardSpeed)
+            {
+                return false;
+            }
+
+            // レーンの外にずれていたら内側へ寄せる(ファウルラインからの前後の位置と高さはそのまま)。
+            // ファウルラインの物は拡大縮小されているので、ローカル座標ではなく向きで左右の距離を測る
+            float lateral = Vector3.Dot(body.position - foulLine.position, foulLine.right);
+            float clamped = Mathf.Clamp(lateral, -rescueMaxOffset, rescueMaxOffset);
+            Vector3 position = body.position - foulLine.right * (lateral - clamped);
+
+            body.position = position;
+            currentBall.transform.position = position;
+            body.angularVelocity = Vector3.zero;
+            body.linearVelocity = foulLine.forward * rescueSpeed;
+
+            rescued = true;
+            stoppedTimer = 0f;
+            rollTimer = 0f;
+            return true;
+        }
+
         private void RecordRoll()
         {
             int frame = sheet.CurrentFrame;
