@@ -39,6 +39,10 @@ namespace VRGame3.Common
         [Range(0.02f, 0.3f)]
         [SerializeField] private float sampleWindow = 0.08f;
 
+        [Tooltip("離す直前の何秒間から「一番速かった瞬間」を探すか。長いほど離すのが遅れても許される。0 で離した瞬間の速度を使う")]
+        [Range(0f, 0.4f)]
+        [SerializeField] private float peakWindow = 0.2f;
+
         /// <summary>手から離れたとき。引数は離した位置。</summary>
         public event Action<ThrowableObject, Vector3> Released;
 
@@ -188,6 +192,12 @@ namespace VRGame3.Common
             AddSample(Time.time, transform.position, transform.rotation);
             EstimateVelocity(out Vector3 velocity, out Vector3 angularVelocity);
 
+            // 種目ごとの補正(ボウリングの方向補正など)があれば、倍率をかける前に通す
+            if (TryGetComponent(out IThrowAdjuster adjuster))
+            {
+                adjuster.AdjustThrow(ref velocity, ref angularVelocity);
+            }
+
             pendingVelocity = Vector3.ClampMagnitude(velocity * velocityScale, maxSpeed);
             pendingAngularVelocity = Vector3.ClampMagnitude(angularVelocity * angularVelocityScale, maxAngularSpeed);
             hasPendingThrow = true;
@@ -216,7 +226,9 @@ namespace VRGame3.Common
         }
 
         /// <summary>
-        /// 直近 sampleWindow 秒の最初と最後の記録から、速度と角速度を求める。
+        /// 離す直前 peakWindow 秒の中で、一番速く動いていた瞬間の速度と角速度を求める。
+        /// 離すのが少し遅れて腕が振り上がり始めていても、振り下ろした一番速い瞬間で投げたことにする。
+        /// peakWindow が 0 のときは、離した瞬間の速度を使う。
         /// </summary>
         private void EstimateVelocity(out Vector3 velocity, out Vector3 angularVelocity)
         {
@@ -229,13 +241,46 @@ namespace VRGame3.Common
 
             int newest = (sampleHead - 1 + MaxSamples) % MaxSamples;
             float newestTime = sampleTimes[newest];
+            float bestSpeed = -1f;
+            for (int i = 0; i < sampleCount; i++)
+            {
+                int end = (newest - i + MaxSamples) % MaxSamples;
+                if (newestTime - sampleTimes[end] > peakWindow)
+                {
+                    break;
+                }
+
+                if (!EstimateVelocityEndingAt(end, i, out Vector3 v, out Vector3 w))
+                {
+                    continue;
+                }
+
+                float speed = v.sqrMagnitude;
+                if (speed > bestSpeed)
+                {
+                    bestSpeed = speed;
+                    velocity = v;
+                    angularVelocity = w;
+                }
+            }
+        }
+
+        /// <summary>
+        /// end 番目の記録と、その sampleWindow 秒前の記録から、速度と角速度を求める。
+        /// age は end が最新から何個前の記録か。計算できなければ false。
+        /// </summary>
+        private bool EstimateVelocityEndingAt(int end, int age, out Vector3 velocity, out Vector3 angularVelocity)
+        {
+            velocity = Vector3.zero;
+            angularVelocity = Vector3.zero;
+            float endTime = sampleTimes[end];
 
             // 窓の中で一番古い記録を探す
-            int oldest = newest;
-            for (int i = 1; i < sampleCount; i++)
+            int oldest = end;
+            for (int i = age + 1; i < sampleCount; i++)
             {
-                int index = (newest - i + MaxSamples) % MaxSamples;
-                if (newestTime - sampleTimes[index] > sampleWindow)
+                int index = (end - (i - age) + MaxSamples) % MaxSamples;
+                if (endTime - sampleTimes[index] > sampleWindow)
                 {
                     break;
                 }
@@ -243,15 +288,15 @@ namespace VRGame3.Common
                 oldest = index;
             }
 
-            float dt = newestTime - sampleTimes[oldest];
-            if (oldest == newest || dt <= Mathf.Epsilon)
+            float dt = endTime - sampleTimes[oldest];
+            if (oldest == end || dt <= Mathf.Epsilon)
             {
-                return;
+                return false;
             }
 
-            velocity = (samplePositions[newest] - samplePositions[oldest]) / dt;
+            velocity = (samplePositions[end] - samplePositions[oldest]) / dt;
 
-            Quaternion delta = sampleRotations[newest] * Quaternion.Inverse(sampleRotations[oldest]);
+            Quaternion delta = sampleRotations[end] * Quaternion.Inverse(sampleRotations[oldest]);
             delta.ToAngleAxis(out float angle, out Vector3 axis);
             if (angle > 180f)
             {
@@ -262,6 +307,8 @@ namespace VRGame3.Common
             {
                 angularVelocity = axis * (angle * Mathf.Deg2Rad / dt);
             }
+
+            return true;
         }
     }
 }

@@ -6,6 +6,9 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
+    path: Assets/_Project/Sports/Bowling/Scenes/Bowling.unity
+    guid: e5c910e467d68fa42ad0b52371cc7c9d
+  - enabled: 1
     path: Assets/_Project/Common/Scenes/M0_Sandbox.unity
     guid: b843d5dc8c82bae4eb58b8bdeddd77a8
   m_configObjects:

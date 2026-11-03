@@ -90,7 +90,7 @@ namespace VRGame3.Sports.Bowling.EditorTools
             BuildLane(root.transform, palette, lanePhysics, cushionPhysics);
             Transform foulLine = BuildFoulLine(root.transform, palette);
             PinSetter pinSetter = BuildPins(root.transform, palette, pinPhysics);
-            List<ThrowableObject> balls = BuildBallRack(root.transform, palette, ballPhysics);
+            List<ThrowableObject> balls = BuildBallRack(root.transform, palette, ballPhysics, foulLine);
             BowlingScoreBoard scoreBoard = BuildScoreBoards(root.transform, palette);
 
             var game = root.AddComponent<BowlingGame>();
@@ -264,7 +264,8 @@ namespace VRGame3.Sports.Bowling.EditorTools
         /// <summary>
         /// ボール置き台とボール3個。台の上の2本のレールの間にボールを置いて転がり落ちないようにする。
         /// </summary>
-        private static List<ThrowableObject> BuildBallRack(Transform parent, BowlingBuildPalette palette, PhysicsMaterial ballPhysics)
+        private static List<ThrowableObject> BuildBallRack(Transform parent, BowlingBuildPalette palette, PhysicsMaterial ballPhysics,
+            Transform foulLine)
         {
             var rack = new GameObject("ボール置き台");
             rack.transform.SetParent(parent, false);
@@ -296,6 +297,9 @@ namespace VRGame3.Sports.Bowling.EditorTools
                 // レーンは油が引いてあり、ほとんど減速しない
                 throwSo.FindProperty("rollingDeceleration").floatValue = 0.05f;
                 throwSo.ApplyModifiedPropertiesWithoutUndo();
+
+                // 上下の向きを水平に直し、左右のぶれをレーンの向きに寄せる
+                ball.AddComponent<BowlingThrowAssist>().LaneDirection = foulLine;
 
                 var returner = ball.AddComponent<ReturnToHome>();
                 var returnSo = new SerializedObject(returner);
