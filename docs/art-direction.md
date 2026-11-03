@@ -68,7 +68,7 @@
 
 ## 3. 描画負荷の予算(Pimax 8KX)
 
-8KX は片目あたりの描画解像度が非常に高く、ピクセル数の負荷が支配的になる。**75fps(1フレーム約13.3ms)を目標**とし、以下はすべて目安とする。企画書のゲートもすべて 75fps を基準にしている。
+8KX は片目あたりの描画解像度が非常に高く、ピクセル数の負荷が支配的になる。**60fps(1フレーム約16.7ms)を目標**とし、以下はすべて目安とする。企画書のゲートもすべて 60fps を基準にしている。予算は 75fps 想定で組んだ値のまま残し、余裕分として使う。
 
 ### 3.1 ポリゴンとテクスチャ
 
@@ -123,7 +123,7 @@
 4. シーンのカメラ(XR Origin の Main Camera)で Post Processing のチェックを外す。Volume を置く場合も Motion Blur と Vignette は必ず外す
 5. Project Settings → XR Plug-in Management → OpenXR で Render Mode が Single Pass Instanced のままか確認する
 6. 解像度の調整は Unity の Render Scale より先に、Pimax 側のアプリ(Pimax Play / PiTool)のレンダー品質と視野角設定で行う。Parallel Projections はゲームが正しく映るならオフにする(オンは負荷が増える)
-7. 毎回の確認:実機で OpenXR の fps 表示(SteamVR のフレームタイミング)を見て、13.3ms を超える場面を記録する
+7. 毎回の確認:実機で OpenXR の fps 表示(SteamVR のフレームタイミング)を見て、16.7ms を超える場面を記録する
 
 ## 4. 3Dモデルの調達
 
