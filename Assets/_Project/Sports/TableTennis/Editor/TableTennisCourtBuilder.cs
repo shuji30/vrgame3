@@ -320,6 +320,9 @@ namespace VRGame3.Sports.TableTennis.EditorTools
             cpuRacket.transform.localRotation = Quaternion.Euler(-60f, 0f, 0f) * Quaternion.Euler(0f, 0f, 90f);
             Renderer rubber = BuildRacketVisual(cpuRacket.transform, Mat("T_White", "#FFFDF7"));
 
+            // girl.vrm が取り込まれていれば、CPU の体をそれに差し替える(無ければ仮人形のまま)
+            VrmBodyInstaller.InstallOn(cpuObject);
+
             var cpu = cpuObject.AddComponent<TTCpuPlayer>();
             var so = new SerializedObject(cpu);
             so.FindProperty("ball").objectReferenceValue = ball;

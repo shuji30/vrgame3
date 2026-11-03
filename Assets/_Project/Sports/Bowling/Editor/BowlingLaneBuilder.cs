@@ -519,6 +519,9 @@ namespace VRGame3.Sports.Bowling.EditorTools
             body.interpolation = RigidbodyInterpolation.Interpolate;
             body.collisionDetectionMode = CollisionDetectionMode.ContinuousSpeculative;
 
+            // girl.vrm が取り込まれていれば、CPU の体をそれに差し替える(無ければ仮人形のまま)
+            VrmBodyInstaller.InstallOn(doll.Body.gameObject);
+
             var cpu = doll.Body.gameObject.AddComponent<BowlingCpu>();
             var so = new SerializedObject(cpu);
             so.FindProperty("ball").objectReferenceValue = body;
