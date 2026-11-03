@@ -187,6 +187,12 @@ namespace VRGame3.Common
         /// <summary>「あそびかたを さいしょから」:てびきを見た印を消す。</summary>
         public void ResetTutorials()
         {
+            // 交代プレイ中はその人の身長・利き手を保存しないため、押せないことにする
+            if (TurnSession.Active)
+            {
+                return;
+            }
+
             SaveStore.ResetTutorials();
             if (resetMessage != null)
             {
@@ -240,7 +246,8 @@ namespace VRGame3.Common
             }
 
             SaveStore.SaveSettings();
-            if (testSource != null && testClip != null)
+            // 全体の行だけ試しの音を鳴らす(まわりの音の行は鳴らさない。docs/art-direction.md 6.16)
+            if (master && testSource != null && testClip != null)
             {
                 testSource.PlayOneShot(testClip, 0.4f);
             }

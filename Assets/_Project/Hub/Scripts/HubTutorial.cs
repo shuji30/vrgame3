@@ -41,6 +41,12 @@ namespace VRGame3.Hub
 
         private void Update()
         {
+            if (board == null)
+            {
+                enabled = false;
+                return;
+            }
+
             // 「あそびかたを さいしょから」を押したら、またはじめから出す
             if (!hintsOn && !board.IsOpen && !SaveStore.HasSeenTutorial(Id) && Time.timeSinceLevelLoad > 2f)
             {

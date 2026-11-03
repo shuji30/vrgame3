@@ -39,7 +39,7 @@ namespace VRGame3.Common
                 order.Add(i);
             }
 
-            order.Sort((a, b) => scores[b].CompareTo(scores[a]));
+            order.Sort((a, b) => scores[b] != scores[a] ? scores[b].CompareTo(scores[a]) : a.CompareTo(b));
             string body = string.Empty;
             foreach (int i in order)
             {

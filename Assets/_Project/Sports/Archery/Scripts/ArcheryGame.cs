@@ -263,6 +263,7 @@ namespace VRGame3.Sports.Archery
 
         private IEnumerator FinishChallenge(bool cleared)
         {
+            GameSession.InProgress = false;
             string id = challengeId;
             string detail = id == "archery.keep" ? $"つづけて {challengeStreak}本"
                 : id == "archery.far" ? $"当たり {challengeHits}本"

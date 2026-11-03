@@ -60,9 +60,49 @@ namespace VRGame3.Sports.TableTennis
             Hide();
         }
 
+        private Vector3 baseScale;
+        private bool scaleCaptured;
+
+        /// <summary>床に落ちた球を、少し待ってから縮めて消す(docs/art-direction.md M3 の「ボール」)。</summary>
+        public void ShrinkAway(float delay, float duration)
+        {
+            if (isActiveAndEnabled)
+            {
+                StartCoroutine(Shrink(delay, duration));
+            }
+        }
+
+        private System.Collections.IEnumerator Shrink(float delay, float duration)
+        {
+            yield return new WaitForSeconds(delay);
+            for (float t = 0f; t < duration && mode == Mode.Hidden; t += Time.deltaTime)
+            {
+                transform.localScale = baseScale * (1f - t / duration);
+                yield return null;
+            }
+
+            if (mode == Mode.Hidden)
+            {
+                Hide();
+            }
+        }
+
+        private void RestoreScale()
+        {
+            if (!scaleCaptured)
+            {
+                baseScale = transform.localScale;
+                scaleCaptured = true;
+            }
+
+            StopAllCoroutines();
+            transform.localScale = baseScale;
+        }
+
         /// <summary>ボールを隠す。</summary>
         public void Hide()
         {
+            RestoreScale();
             mode = Mode.Hidden;
             holdHand = null;
             gameObject.SetActive(false);
@@ -71,6 +111,7 @@ namespace VRGame3.Sports.TableTennis
         /// <summary>手の中にボールを出して持たせる(サーブの前)。</summary>
         public void Hold(Transform hand)
         {
+            RestoreScale();
             holdHand = hand;
             mode = Mode.Held;
             position = hand.TransformPoint(holdOffset);
@@ -94,6 +135,7 @@ namespace VRGame3.Sports.TableTennis
         /// <summary>決めた位置と速さで飛ばす(CPU が打つとき、補助で直すときも使う)。</summary>
         public void Launch(Vector3 from, Vector3 initialVelocity)
         {
+            RestoreScale();
             position = from;
             velocity = initialVelocity;
             mode = Mode.Flying;
@@ -151,8 +193,9 @@ namespace VRGame3.Sports.TableTennis
 
                 if (e.Kind == PingPongPhysics.EventKind.Floor)
                 {
-                    // 床に落ちたら止める(拾わせない。進行役が消す)
+                    // 床に落ちたら止める(拾わせない)。1秒後に縮めて消す
                     mode = Mode.Hidden;
+                    ShrinkAway(1f, 0.15f);
                 }
 
                 Bounced?.Invoke(e);

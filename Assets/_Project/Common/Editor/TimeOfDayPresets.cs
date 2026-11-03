@@ -52,6 +52,21 @@ namespace VRGame3.Common.EditorTools
             RenderSettings.fogEndDistance = 150f;
         }
 
+        /// <summary>卓球場の時間帯の環境音(鳥の間隔を短くしない、虫は 0.5 倍)。</summary>
+        public static void AdjustForCourt(TimeOfDayApplier applier)
+        {
+            var so = new SerializedObject(applier);
+            SerializedProperty presets = so.FindProperty("presets");
+            for (int i = 0; i < presets.arraySize; i++)
+            {
+                SerializedProperty p = presets.GetArrayElementAtIndex(i);
+                p.FindPropertyRelative("birdIntervalScale").floatValue = Mathf.Max(1f, p.FindPropertyRelative("birdIntervalScale").floatValue);
+                p.FindPropertyRelative("insectsScale").floatValue *= 0.5f;
+            }
+
+            so.ApplyModifiedPropertiesWithoutUndo();
+        }
+
         private static void SetSounds(SerializedProperty p, float wave, float birdVolume, float birdInterval, float insects)
         {
             p.FindPropertyRelative("waveScale").floatValue = wave;

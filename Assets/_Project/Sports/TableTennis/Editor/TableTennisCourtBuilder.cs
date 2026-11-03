@@ -123,6 +123,11 @@ namespace VRGame3.Sports.TableTennis.EditorTools
             AddWarning(warnings, CommonSceneBuilder.AddFader());
             AddWarning(warnings, CommonSceneBuilder.AddMenuAndSettings(root.transform, false, out _));
             CommonSceneBuilder.EnsureSkillPointRules();
+            TimeOfDayApplier time = Object.FindAnyObjectByType<TimeOfDayApplier>();
+            if (time != null)
+            {
+                TimeOfDayPresets.AdjustForCourt(time);
+            }
 
             EditorSceneManager.SaveScene(scene, ScenePath);
             SceneBuildUtility.AddSceneToBuildSettings(ScenePath);
@@ -398,7 +403,6 @@ namespace VRGame3.Sports.TableTennis.EditorTools
             return canvas;
         }
 
-        /// <summary>「はじめに」パネル(docs/art-direction.md 6.10 の卓球の行。1000 × 940)。モードの行(+150)は M3 の順5で足す。</summary>
         /// <summary>チャレンジ「ねらい打ち」の円(CPU 側のコートの左右の隅、直径 0.5m)。台の子にして高さに付いて行く。</summary>
         private static GameObject BuildAimTargets(Transform table)
         {
@@ -418,6 +422,7 @@ namespace VRGame3.Sports.TableTennis.EditorTools
             return group.gameObject;
         }
 
+        /// <summary>「はじめに」パネル(docs/art-direction.md 6.10 の卓球の行。1000 × 940)。</summary>
         private static void BuildStartPanel(Transform root, TMP_FontAsset font, TableTennisGame game, ChoicePanel choicePanel,
             GameObject aimTargets)
         {

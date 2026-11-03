@@ -79,6 +79,7 @@ namespace VRGame3.Common
                 Choice.Mode = modes[0];
             }
 
+            SyncTurns();
             Refresh();
         }
 
@@ -98,6 +99,7 @@ namespace VRGame3.Common
             }
 
             Choice.Mode = modes[index];
+            SyncTurns();
             Refresh();
             Changed?.Invoke();
         }
@@ -117,10 +119,30 @@ namespace VRGame3.Common
             else if (Choice.Mode == SportMode.Turns)
             {
                 Choice.PlayerCount = index + 2;
+                SyncTurns();
             }
 
             Refresh();
             Changed?.Invoke();
+        }
+
+        /// <summary>
+        /// 交代プレイを、選んだモードに合わせる。「こうたいで」を選んだ時点で始め(その人たちの身長・利き手を保存しないため)、
+        /// 人数を変えたら始め直し、別のモードにしたら終える(保存した設定に戻す)。
+        /// </summary>
+        private void SyncTurns()
+        {
+            if (Choice.Mode == SportMode.Turns)
+            {
+                if (!TurnSession.Active || TurnSession.PlayerCount != Choice.PlayerCount)
+                {
+                    TurnSession.Begin(Choice.PlayerCount);
+                }
+            }
+            else if (TurnSession.Active)
+            {
+                TurnSession.End();
+            }
         }
 
         /// <summary>表示を書き直す。</summary>

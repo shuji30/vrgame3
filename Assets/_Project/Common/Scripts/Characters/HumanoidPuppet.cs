@@ -8,6 +8,7 @@ namespace VRGame3.Common
     /// モデルのファイルやマテリアルは変えない(改変禁止のため。動かすのは実行中のボーンの向きだけ)。
     /// 体の移動・跳ねは、モデルを仮人形の体の子にすることで付いて行く。
     /// </summary>
+    [DefaultExecutionOrder(1000)]
     public class HumanoidPuppet : MonoBehaviour
     {
         [Tooltip("モデルの Animator(人型のアバターが入っているもの)")]
@@ -101,7 +102,8 @@ namespace VRGame3.Common
             // 余弦定理で上腕の角度を求め、ひじの位置を決める
             float cosA = Mathf.Clamp((ab * ab + at * at - bc * bc) / (2f * ab * at), -1f, 1f);
             float angleA = Mathf.Acos(cosA) * Mathf.Rad2Deg;
-            Vector3 elbowDir = Quaternion.AngleAxis(-angleA, bendNormal) * toTarget;
+            // bendNormal = toTarget × hint のまわりに +角度で回すと、ひじはヒントの側(下・後ろ)へ出る
+            Vector3 elbowDir = Quaternion.AngleAxis(angleA, bendNormal) * toTarget;
             Vector3 elbow = a + elbowDir * ab;
 
             upper.rotation = Quaternion.FromToRotation(b - a, elbow - a) * upper.rotation;

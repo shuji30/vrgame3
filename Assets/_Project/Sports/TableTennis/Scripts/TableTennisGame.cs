@@ -221,7 +221,12 @@ namespace VRGame3.Sports.TableTennis
             EquipHands();
             GameSession.InProgress = false;
             RefreshBoard();
-            BeginTutorial();
+            // ねらい打ちと練習は CPU が球を出すので、投げ上げから始まるてびきは出さない
+            if (challengeId != "tabletennis.aim" && challengeId != "practice")
+            {
+                BeginTutorial();
+            }
+
             NextServe();
         }
 
@@ -358,7 +363,7 @@ namespace VRGame3.Sports.TableTennis
             if (serveGuide != null)
             {
                 // てびきの板が出ている間は、サーブの案内は出さない(板と重ねない)
-                bool tutorial = TutorialBoard.Current != null && TutorialBoard.Current.Step >= 0;
+                bool tutorial = TutorialBoard.Current != null && TutorialBoard.Current.IsOpen;
                 bool show = state == State.PlayerServe && !ball.IsHeld && !InputGate.GrabBlocked && !tutorial;
                 if (serveGuide.activeSelf != show)
                 {
@@ -632,6 +637,14 @@ namespace VRGame3.Sports.TableTennis
 
             if (challengeId == "tabletennis.aim")
             {
+                if (judge.LastHitter != TTSide.Player)
+                {
+                    // CPU の球出しのミス(プレイヤーがまだ打っていない):数えずに出し直す
+                    state = State.PointOver;
+                    pointTimer = pointPause;
+                    return;
+                }
+
                 // 入らなかった球
                 scoreBoard.ShowReason(point.Reason);
                 EndFeed();

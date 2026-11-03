@@ -247,7 +247,8 @@ namespace VRGame3.Sports.TableTennis
             {
                 float speed = v.magnitude;
                 p = new Vector3(p.x, table.Top + s.ballRadius, p.z);
-                if (-v.y * s.tableBounce < s.restSpeed)
+                bool alreadyResting = Mathf.Abs(start.y - (table.Top + s.ballRadius)) < 0.003f;
+                if (alreadyResting && -v.y * s.tableBounce < s.restSpeed)
                 {
                     // 止まりかけ:弾ませずに台の上を転がす(出来事は出さない。音が鳴り続けないように)
                     v = new Vector3(v.x * (1f - 2f * h), 0f, v.z * (1f - 2f * h));

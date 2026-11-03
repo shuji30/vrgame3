@@ -110,9 +110,18 @@ namespace VRGame3.Common
             Current?.CompleteAfter(lastStep, seconds);
         }
 
+        private Vector3[] ringBaseScales = new Vector3[0];
+
         private void Awake()
         {
             Current = this;
+            // 光る輪の元の大きさ(直径 5cm ほどの薄い円盤)を覚えておき、倍率だけをかける
+            ringBaseScales = new Vector3[controllerRings.Length];
+            for (int i = 0; i < controllerRings.Length; i++)
+            {
+                ringBaseScales[i] = controllerRings[i] != null ? controllerRings[i].transform.localScale : Vector3.one;
+            }
+
             panelRoot.SetActive(false);
             SetRings(false, false, false, false);
         }
@@ -270,11 +279,14 @@ namespace VRGame3.Common
                 ring.localScale = Vector3.one * k;
             }
 
-            foreach (GameObject r in controllerRings)
+            for (int i = 0; i < controllerRings.Length; i++)
             {
+                GameObject r = controllerRings[i];
                 if (r != null && r.activeSelf)
                 {
-                    r.transform.localScale = Vector3.one * k;
+                    Vector3 b = ringBaseScales[i];
+                    // 厚みはそのまま、輪の広がりだけを変える
+                    r.transform.localScale = new Vector3(b.x * k, b.y, b.z * k);
                 }
             }
         }

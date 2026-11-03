@@ -31,6 +31,7 @@ namespace VRGame3.Common
         /// <summary>交代プレイを始める。</summary>
         public static void Begin(int players)
         {
+            // 1人も終わっていないうちに人数だけ変えたときは、保存した設定はそのまま使う
             if (!Active)
             {
                 savedHeight = SaveStore.Settings.heightCm;

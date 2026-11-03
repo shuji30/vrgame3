@@ -87,6 +87,14 @@ namespace VRGame3.Sports.Bowling
         [Tooltip("ピンが倒れきるのを待つ秒数")]
         [SerializeField] private float settleTime = 2.5f;
 
+        [Header("確認用")]
+        [Tooltip("オンにすると、プレイを始めたときに CPU だけで10ゲーム投げ、平均点を Console に出す(強さの合わせ込み用)")]
+        [SerializeField] private bool simulateTenGames;
+
+        [Tooltip("試験で投げる強さ(0 やさしい / 1 ふつう / 2 つよい)")]
+        [Range(0, 2)]
+        [SerializeField] private int simulateLevel = 1;
+
         private BowlingScoreSheet sheet = new BowlingScoreSheet();
         private int level = 1;
         private Vector3 waitPosition;
@@ -132,6 +140,37 @@ namespace VRGame3.Sports.Bowling
             sheet = new BowlingScoreSheet();
             scoreBoard.Refresh(sheet);
             ball.gameObject.SetActive(false);
+            pinSetter.ResetRack();
+            body.position = waitPosition;
+            throwHand.localPosition = handRest;
+        }
+
+        private IEnumerator Start()
+        {
+            if (!simulateTenGames)
+            {
+                yield break;
+            }
+
+            int total = 0;
+            for (int game = 0; game < 10; game++)
+            {
+                NewGame(simulateLevel);
+                while (!sheet.IsGameOver)
+                {
+                    bool done = false;
+                    PlayFrame(() => done = true);
+                    while (!done)
+                    {
+                        yield return null;
+                    }
+                }
+
+                total += sheet.GetTotalScore();
+                Debug.Log($"[CPU の試験] {CurrentLevel.label} {game + 1}ゲーム目 {sheet.GetTotalScore()}点");
+            }
+
+            Debug.Log($"[CPU の試験] {CurrentLevel.label} 10ゲームの平均 {total / 10f:0.0}点");
         }
 
         /// <summary>1フレームを投げる。終わったら onDone。</summary>
@@ -156,6 +195,11 @@ namespace VRGame3.Sports.Bowling
                 string symbol = sheet.GetRollSymbol(frame, rollIndex);
                 scoreBoard.Refresh(sheet);
                 RollRecorded?.Invoke(knocked, symbol);
+                if (symbol == "X" || symbol == "/")
+                {
+                    // 小さく祝う:その場で2回跳ねる(docs/art-direction.md 7.6)
+                    yield return Hop(2);
+                }
                 ball.gameObject.SetActive(false);
                 yield return new WaitForSeconds(1f);
                 if (reset)
@@ -243,6 +287,21 @@ namespace VRGame3.Sports.Bowling
             }
 
             return count > 0 ? sum / count : foulLine.position + foulLine.forward * 18.3f;
+        }
+
+        private IEnumerator Hop(int times)
+        {
+            Vector3 start = body.position;
+            for (int i = 0; i < times; i++)
+            {
+                for (float t = 0f; t < 0.3f; t += Time.deltaTime)
+                {
+                    body.position = start + Vector3.up * (Mathf.Sin(t / 0.3f * Mathf.PI) * 0.12f);
+                    yield return null;
+                }
+            }
+
+            body.position = start;
         }
 
         private IEnumerator Slide(Vector3 from, Vector3 to, float time)

@@ -489,9 +489,6 @@ namespace VRGame3.Sports.Bowling.EditorTools
         }
 
         /// <summary>
-        /// 2レーン共用のボール置き台(レーンの間)とボール3個。台の上の2本のレールの間にボールを置き、転がり落ちないようにする。
-        /// </summary>
-        /// <summary>
         /// CPU の仮人形・CPU のボール・足元の敷物を置き、BowlingCpu でつなぐ(docs/art-direction.md「M3 ボウリングの CPU 対戦の見た目」)。
         /// </summary>
         private static void BuildCpu(GameObject root, BowlingGame game, PinSetter pins, Transform foulLine,
@@ -551,6 +548,9 @@ namespace VRGame3.Sports.Bowling.EditorTools
             }
         }
 
+        /// <summary>
+        /// 2レーン共用のボール置き台(レーンの間)とボール3個。台の上の2本のレールの間にボールを置き、転がり落ちないようにする。
+        /// </summary>
         private static List<ThrowableObject> BuildBallRack(Transform parent, BowlingBuildPalette palette, PhysicsMaterial ballPhysics,
             Transform foulLine)
         {

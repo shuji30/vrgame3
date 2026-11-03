@@ -129,6 +129,8 @@ namespace VRGame3.Common
                 }
             }
 
+            RenderSettings.sun = sun;
+
             // スカイボックスは共有のマテリアルを書き換えないよう、複製して使う
             if (RenderSettings.skybox != null)
             {
@@ -150,6 +152,14 @@ namespace VRGame3.Common
             if (skyInstance != null)
             {
                 Destroy(skyInstance);
+            }
+
+            foreach (Renderer sea in seaRenderers)
+            {
+                if (sea != null)
+                {
+                    Destroy(sea.material);
+                }
             }
         }
 

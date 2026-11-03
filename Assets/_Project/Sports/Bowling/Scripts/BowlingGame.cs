@@ -235,12 +235,14 @@ namespace VRGame3.Sports.Bowling
         /// </summary>
         public void StartSelectedMode()
         {
-            BeginTutorial();
             SportMode mode = modeSelector != null ? modeSelector.Mode : SportMode.Solo;
             if (mode == SportMode.Turns && !TurnSession.Active)
             {
                 TurnSession.Begin(modeSelector.Choice.PlayerCount);
             }
+
+            // 交代プレイを始めてから(交代プレイでは印に関係なく出すため)
+            BeginTutorial();
 
             NewGame();
             if (mode == SportMode.Cpu && cpu != null)
@@ -521,7 +523,7 @@ namespace VRGame3.Sports.Bowling
 
             // フレームの終わりは休憩案内を出してよい区切り
             playerFrameEnded = sheet.CurrentFrame != frame || sheet.IsGameOver;
-            if (playerFrameEnded)
+            if (playerFrameEnded && !cpuMatch)
             {
                 RestReminder.AtBreak();
             }
@@ -659,6 +661,7 @@ namespace VRGame3.Sports.Bowling
             }
 
             scoreBoard.Refresh(sheet);
+            RestReminder.AtBreak();
             if (!sheet.IsGameOver)
             {
                 state = State.Ready;
