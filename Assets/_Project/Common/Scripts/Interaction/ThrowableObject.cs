@@ -32,7 +32,7 @@ namespace VRGame3.Common
         [Header("転がり")]
         [Tooltip("床などに触れて転がっているときの減速の強さ(m/秒²)。0 で減速なし(どこまでも転がる)。空中では効かない")]
         [Range(0f, 5f)]
-        [SerializeField] private float rollingDeceleration = 1.5f;
+        [SerializeField] private float rollingDeceleration = 0.5f;
 
         [Header("速度の計算")]
         [Tooltip("離す直前の何秒間の動きから速度を求めるか。短いと敏感、長いと安定する")]

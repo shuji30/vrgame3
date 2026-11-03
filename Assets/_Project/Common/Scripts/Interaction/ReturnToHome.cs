@@ -24,7 +24,7 @@ namespace VRGame3.Common
 
         [Tooltip("元の位置から離れてこの秒数たったら、止まっていなくても戻す。0 で無効")]
         [Range(0f, 30f)]
-        [SerializeField] private float maxAwayTime = 10f;
+        [SerializeField] private float maxAwayTime = 15f;
 
         [Tooltip("この高さ(m)より下に落ちたら、止まるのを待たずにすぐ戻す")]
         [SerializeField] private float fallHeight = -2f;
