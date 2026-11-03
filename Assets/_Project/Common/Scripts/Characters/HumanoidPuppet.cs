@@ -26,6 +26,26 @@ namespace VRGame3.Common
         [Tooltip("頭(失点でうつむく動きを写す。空なら写さない)")]
         [SerializeField] private Transform headSource;
 
+        [Header("歩く動き(体が動いている間だけ)")]
+        [Tooltip("1歩(左右で1周の半分)で進む距離(m)")]
+        [SerializeField] private float strideLength = 0.6f;
+
+        [Tooltip("ももを前後に振る角度(度)")]
+        [SerializeField] private float legSwing = 25f;
+
+        [Tooltip("後ろへ行った脚のひざを曲げる角度(度)")]
+        [SerializeField] private float kneeBend = 35f;
+
+        [Tooltip("この速さ(m/秒)で歩く動きが最大になる")]
+        [SerializeField] private float fullWalkSpeed = 1.2f;
+
+        private Transform body;
+        private Vector3 lastBodyPosition;
+        private float walkPhase;
+        private float walkAmount;
+        private Transform[] legBones = new Transform[4];
+        private Quaternion[] legRest = new Quaternion[4];
+
         private Transform rightUpper;
         private Transform rightLower;
         private Transform rightHand;
@@ -51,6 +71,19 @@ namespace VRGame3.Common
             leftLower = animator.GetBoneTransform(HumanBodyBones.LeftLowerArm);
             leftHand = animator.GetBoneTransform(HumanBodyBones.LeftHand);
             head = animator.GetBoneTransform(HumanBodyBones.Head);
+
+            // 脚(左右の大腿・下腿)の、体から見た休み姿勢を覚える
+            body = transform.parent != null ? transform.parent : transform;
+            lastBodyPosition = body.position;
+            HumanBodyBones[] legs =
+            {
+                HumanBodyBones.LeftUpperLeg, HumanBodyBones.RightUpperLeg, HumanBodyBones.LeftLowerLeg, HumanBodyBones.RightLowerLeg,
+            };
+            for (int i = 0; i < legs.Length; i++)
+            {
+                legBones[i] = animator.GetBoneTransform(legs[i]);
+                legRest[i] = legBones[i] != null ? Quaternion.Inverse(body.rotation) * legBones[i].rotation : Quaternion.identity;
+            }
             if (head != null)
             {
                 headRest = head.localRotation;
@@ -64,11 +97,46 @@ namespace VRGame3.Common
 
         private void LateUpdate()
         {
+            Walk();
             Solve(rightUpper, rightLower, rightHand, rightTarget);
             Solve(leftUpper, leftLower, leftHand, leftTarget);
             if (head != null && headSource != null)
             {
                 head.localRotation = headRest * (Quaternion.Inverse(headSourceRest) * headSource.localRotation);
+            }
+        }
+
+        /// <summary>
+        /// 体(仮人形の根元)が水平に動いている間、進んだ距離に合わせて脚を振る(アニメーション素材は使わない)。
+        /// 左右の脚は半周ずらし、後ろへ行った脚のひざを曲げる。止まると休み姿勢へなめらかに戻る。
+        /// </summary>
+        private void Walk()
+        {
+            float dt = Mathf.Max(Time.deltaTime, 0.0001f);
+            Vector3 delta = body.position - lastBodyPosition;
+            lastBodyPosition = body.position;
+            delta.y = 0f;
+            float speed = delta.magnitude / dt;
+            walkAmount = Mathf.MoveTowards(walkAmount, Mathf.Clamp01(speed / fullWalkSpeed), dt * 4f);
+            walkPhase += delta.magnitude / Mathf.Max(0.1f, strideLength) * Mathf.PI;
+
+            Vector3 axis = body.right;
+            for (int side = 0; side < 2; side++)
+            {
+                Transform upper = legBones[side];
+                Transform lower = legBones[side + 2];
+                float s = Mathf.Sin(walkPhase + side * Mathf.PI);
+                if (upper != null)
+                {
+                    upper.rotation = Quaternion.AngleAxis(-s * legSwing * walkAmount, axis) * (body.rotation * legRest[side]);
+                }
+
+                if (lower != null)
+                {
+                    // 脚が後ろへ行っている間(s が負)、ひざを曲げる
+                    float bend = Mathf.Max(0f, -s) * kneeBend * walkAmount;
+                    lower.rotation = Quaternion.AngleAxis(bend, axis) * (upper != null ? upper.rotation * Quaternion.Inverse(body.rotation * legRest[side]) : Quaternion.identity) * (body.rotation * legRest[side + 2]);
+                }
             }
         }
 
