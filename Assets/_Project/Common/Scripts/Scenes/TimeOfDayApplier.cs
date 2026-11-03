@@ -58,6 +58,15 @@ namespace VRGame3.Common
             [Tooltip("大気の厚さ(Atmosphere Thickness。大きいほど夕焼けらしく赤くなる)")]
             public float atmosphere = 1f;
 
+            [Tooltip("太陽の円の大きさ(Sun Size)")]
+            public float sunSize = 0.04f;
+
+            [Tooltip("海の色")]
+            public Color seaColor = new Color32(0x2F, 0xB5, 0xB0, 0xFF);
+
+            [Tooltip("映り込みの強さ(Reflection Intensity)")]
+            public float reflectionIntensity = 1f;
+
             [Tooltip("霧の色")]
             public Color fogColor = new Color(0.8f, 0.9f, 0.97f);
 
@@ -70,6 +79,9 @@ namespace VRGame3.Common
 
         [Tooltip("太陽(Directional Light)。空ならシーンから探す")]
         [SerializeField] private Light sun;
+
+        [Tooltip("色を時間帯で替える海")]
+        [SerializeField] private Renderer[] seaRenderers = new Renderer[0];
 
         [Tooltip("あさ / ひる / ゆうやけ")]
         [SerializeField] private Preset[] presets = { new Preset { label = "あさ" }, new Preset(), new Preset { label = "ゆうやけ" } };
@@ -187,13 +199,26 @@ namespace VRGame3.Common
                 SetIfHas(skyInstance, "_GroundColor", p.skyGround);
                 SetIfHas(skyInstance, "_Exposure", p.skyExposure);
                 SetIfHas(skyInstance, "_AtmosphereThickness", p.atmosphere);
+                SetIfHas(skyInstance, "_SunSize", p.sunSize);
             }
+
+            // 海は複製したマテリアルの色だけを替える(アセットは書き換えない)
+            foreach (Renderer sea in seaRenderers)
+            {
+                if (sea != null && sea.material.HasProperty("_BaseColor"))
+                {
+                    sea.material.SetColor("_BaseColor", p.seaColor);
+                }
+            }
+
+            RenderSettings.reflectionIntensity = p.reflectionIntensity;
 
             RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.Linear;
             RenderSettings.fogColor = p.fogColor;
             RenderSettings.fogStartDistance = p.fogStart;
             RenderSettings.fogEndDistance = p.fogEnd;
+            DynamicGI.UpdateEnvironment();
         }
 
         private static void SetIfHas(Material material, string property, Color value)
