@@ -221,6 +221,7 @@ namespace VRGame3.Sports.TableTennis
             EquipHands();
             GameSession.InProgress = false;
             RefreshBoard();
+            cpu.Chatter.Say("よろしくね!", "いくよ〜!", "まけないよ!");
             // ねらい打ちと練習は CPU が球を出すので、投げ上げから始まるてびきは出さない
             if (challengeId != "tabletennis.aim" && challengeId != "practice")
             {
@@ -712,6 +713,14 @@ namespace VRGame3.Sports.TableTennis
             scoreBoard.ShowReason(won ? "かち!" : "まけ");
             RestReminder.AtBreak();
             GameFinished?.Invoke(won);
+            if (won)
+            {
+                cpu.Chatter.Say("まけちゃった…つよいね!", "くやしい!もういっかい!");
+            }
+            else
+            {
+                cpu.Chatter.Say("かったよ!たのしかった!", "やったー!またあそぼ!");
+            }
             if (resultPanel != null)
             {
                 // 勝敗と点数を見出しに出す(docs/art-direction.md 6.13)

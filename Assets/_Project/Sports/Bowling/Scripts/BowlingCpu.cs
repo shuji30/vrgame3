@@ -133,6 +133,7 @@ namespace VRGame3.Sports.Bowling
             body.position = waitPosition;
             ball.gameObject.SetActive(false);
             ApplyLevelLook();
+            Chatter.Say("よろしくね!", "しょうぶだよ!");
         }
 
         /// <summary>スコア板の CPU の段を空にして隠す(ひとりで遊ぶとき)。</summary>
@@ -176,6 +177,40 @@ namespace VRGame3.Sports.Bowling
             Debug.Log($"[CPU の試験] {CurrentLevel.label} 10ゲームの平均 {total / 10f:0.0}点");
         }
 
+        /// <summary>おしゃべり(無ければ付ける)。</summary>
+        public CpuChatter Chatter
+        {
+            get
+            {
+                if (chatter == null)
+                {
+                    // Unity の物は ?? で null を正しく判定できないので、明示して確かめる
+                    chatter = body.GetComponent<CpuChatter>();
+                    if (chatter == null)
+                    {
+                        chatter = body.gameObject.AddComponent<CpuChatter>();
+                    }
+                }
+
+                return chatter;
+            }
+        }
+
+        private CpuChatter chatter;
+
+        /// <summary>プレイヤーの投球に反応する(CPU 対戦のとき)。</summary>
+        public void OnPlayerRoll(string symbol)
+        {
+            if (symbol == "X")
+            {
+                Chatter.Say("すごい!", "ナイスストライク!");
+            }
+            else if (symbol == "/")
+            {
+                Chatter.MaybeSay("ナイススペア!");
+            }
+        }
+
         /// <summary>1フレームを投げる。終わったら onDone。</summary>
         public void PlayFrame(Action onDone)
         {
@@ -198,6 +233,19 @@ namespace VRGame3.Sports.Bowling
                 string symbol = sheet.GetRollSymbol(frame, rollIndex);
                 scoreBoard.Refresh(sheet);
                 RollRecorded?.Invoke(knocked, symbol);
+                if (symbol == "X")
+                {
+                    Chatter.Say("ストライク!", "やったー!");
+                }
+                else if (symbol == "/")
+                {
+                    Chatter.MaybeSay("スペア!", "セーフ!");
+                }
+                else if (knocked == 0)
+                {
+                    Chatter.Say("あれ〜?", "ガター…");
+                }
+
                 HumanoidFace face = body.GetComponentInChildren<HumanoidFace>();
                 if (face != null)
                 {

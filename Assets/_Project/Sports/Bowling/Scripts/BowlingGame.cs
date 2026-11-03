@@ -520,6 +520,10 @@ namespace VRGame3.Sports.Bowling
             }
 
             RollRecorded?.Invoke(frame, rollIndex, knocked, symbol);
+            if (cpuMatch && cpu != null)
+            {
+                cpu.OnPlayerRoll(symbol);
+            }
 
             // フレームの終わりは休憩案内を出してよい区切り
             playerFrameEnded = sheet.CurrentFrame != frame || sheet.IsGameOver;
@@ -675,6 +679,7 @@ namespace VRGame3.Sports.Bowling
             int cpuTotal = cpu.Sheet.GetTotalScore();
             GameRecordResult result = SaveStore.RecordFinishedGame(SportIds.Bowling, total);
             string verdict = total > cpuTotal ? "かち!" : total < cpuTotal ? "まけ" : "ひきわけ";
+            cpu.Chatter.Say(total > cpuTotal ? "まけちゃった…つよいね!" : total < cpuTotal ? "かったよ!たのしかった!" : "ひきわけ!いいしょうぶ!");
             scoreBoard.ShowMessage($"{verdict}\n{total} - {cpuTotal}");
             GameFinished?.Invoke(result);
         }

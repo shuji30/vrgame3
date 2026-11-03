@@ -33,10 +33,14 @@ namespace VRGame3.Common
         private static readonly string[] HappyKeys = { "joy", "happy", "fun", "smile" };
         private static readonly string[] SadKeys = { "sorrow", "sad" };
         private static readonly string[] BlinkKeys = { "blink", "eye_close", "eyeclose", "close" };
+        private static readonly string[] MouthKeys = { "mth_a", "mouth_a", "_aa", "vrc.v_aa" };
 
         private readonly List<(SkinnedMeshRenderer mesh, int index)> happy = new List<(SkinnedMeshRenderer, int)>();
         private readonly List<(SkinnedMeshRenderer mesh, int index)> sad = new List<(SkinnedMeshRenderer, int)>();
         private readonly List<(SkinnedMeshRenderer mesh, int index)> blink = new List<(SkinnedMeshRenderer, int)>();
+        private readonly List<(SkinnedMeshRenderer mesh, int index)> mouth = new List<(SkinnedMeshRenderer, int)>();
+        private float mouthWeight;
+        private float mouthGoal;
 
         private Mood mood = Mood.Calm;
         private float moodUntil;
@@ -72,10 +76,20 @@ namespace VRGame3.Common
                     {
                         blink.Add((mesh, i));
                     }
+                    else if ((Contains(name, MouthKeys) || name == "a" || name == "aa") && mouth.Count < 1)
+                    {
+                        mouth.Add((mesh, i));
+                    }
                 }
             }
 
             nextBlink = Time.time + Random.Range(blinkInterval.x, blinkInterval.y);
+        }
+
+        /// <summary>話すときの口の開き(0〜1)。</summary>
+        public void SetMouth(float open)
+        {
+            mouthGoal = Mathf.Clamp01(open) * 100f;
         }
 
         /// <summary>表情を少しのあいだ変える(得点 Happy、失点 Sad)。</summary>
@@ -119,6 +133,8 @@ namespace VRGame3.Common
             }
 
             Set(blink, closed);
+            mouthWeight = Mathf.MoveTowards(mouthWeight, mouthGoal, dt * 1500f);
+            Set(mouth, mouthWeight);
         }
 
         private static void Set(List<(SkinnedMeshRenderer mesh, int index)> shapes, float weight)

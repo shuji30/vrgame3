@@ -253,8 +253,38 @@ namespace VRGame3.Sports.TableTennis
         }
 
         /// <summary>得点・失点の反応(得点なら小さく跳ね、失点なら少しうなだれる)。</summary>
+        /// <summary>おしゃべり(無ければ付ける)。</summary>
+        public CpuChatter Chatter
+        {
+            get
+            {
+                if (chatter == null)
+                {
+                    // Unity の物は ?? で null を正しく判定できないので、明示して確かめる
+                    chatter = body.GetComponent<CpuChatter>();
+                    if (chatter == null)
+                    {
+                        chatter = body.gameObject.AddComponent<CpuChatter>();
+                    }
+                }
+
+                return chatter;
+            }
+        }
+
+        private CpuChatter chatter;
+
         public void React(bool won)
         {
+            if (won)
+            {
+                Chatter.MaybeSay("やった!", "いいかんじ!", "えへへ", "とった!");
+            }
+            else
+            {
+                Chatter.MaybeSay("あー!", "くやしい〜", "ナイス!", "うまいね!");
+            }
+
             // 人型のモデルに差し替えているときは、顔でも反応する
             HumanoidFace face = body.GetComponentInChildren<HumanoidFace>();
             if (face != null)
