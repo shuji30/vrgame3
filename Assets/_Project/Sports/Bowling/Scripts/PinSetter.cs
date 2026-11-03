@@ -66,7 +66,7 @@ namespace VRGame3.Sports.Bowling
                     continue;
                 }
 
-                var body = pin.GetComponent<Rigidbody>();
+                Rigidbody body = pin.Body;
                 if (body.linearVelocity.magnitude > maxSpeed || body.angularVelocity.magnitude > maxAngularSpeed)
                 {
                     return false;

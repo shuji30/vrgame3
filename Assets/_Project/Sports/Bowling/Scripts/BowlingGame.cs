@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.XR.Interaction.Toolkit.Interactables;
+using UnityEngine.XR.Interaction.Toolkit;
 using VRGame3.Common;
 
 namespace VRGame3.Sports.Bowling
@@ -9,7 +10,8 @@ namespace VRGame3.Sports.Bowling
     /// <summary>
     /// ボウリング1レーンの進行役。投げる → ボールがピットに着く(または止まる)→ ピンが落ち着くのを待つ →
     /// 倒れた本数をスコア表に記録 → ピンを片付けるか並べ直す → ボールを戻す、を繰り返す。
-    /// 10フレームが終わったあと、ボールを掴むと新しいゲームが始まる。
+    /// 10フレームが終わったあとは「はじめに」パネル(BowlingStartPanel)の「はじめる」で新しいゲームを始める。
+    /// パネルがないシーンでは、restartOnGrab がオンならボールを掴むと新しいゲームが始まる。
     /// </summary>
     public class BowlingGame : MonoBehaviour
     {
@@ -34,6 +36,9 @@ namespace VRGame3.Sports.Bowling
 
         [Tooltip("ファウルライン。位置が線の中央、青い矢印(Z+)がピンの方向を向くように置く")]
         [SerializeField] private Transform foulLine;
+
+        [Tooltip("10フレームが終わったあと、ボールを掴むと新しいゲームを始めるか。「はじめに」パネルがあるシーンではオフにする")]
+        [SerializeField] private bool restartOnGrab = true;
 
         [Header("投球の終わりの判定")]
         [Tooltip("ファウルラインからこの距離(m)まで進んだら、ボールがピットに着いたとみなす")]
@@ -71,7 +76,7 @@ namespace VRGame3.Sports.Bowling
         [SerializeField] private float rescueMaxHeight = 0.25f;
 
         [Tooltip("レーンの中心から左右にこの距離(m)より離れているときは救済しない")]
-        [SerializeField] private float rescueMaxLateral = 1.0f;
+        [SerializeField] private float rescueMaxLateral = 0.7f;
 
         [Header("片付け")]
         [Tooltip("記録してから、倒れたピンを片付けてボールを戻すまで待つ秒数")]
@@ -124,6 +129,7 @@ namespace VRGame3.Sports.Bowling
                 }
 
                 ball.Released += OnBallReleased;
+                ball.GetComponent<XRGrabInteractable>().selectEntered.AddListener(OnBallGrabbed);
             }
         }
 
@@ -137,6 +143,7 @@ namespace VRGame3.Sports.Bowling
                 }
 
                 ball.Released -= OnBallReleased;
+                ball.GetComponent<XRGrabInteractable>().selectEntered.RemoveListener(OnBallGrabbed);
             }
         }
 
@@ -174,12 +181,22 @@ namespace VRGame3.Sports.Bowling
         /// </summary>
         private void UpdateGrabbable()
         {
-            bool allowed = !inputLocked && state == State.Ready;
+            // 1個掴んでいる間は、ほかのボールを掴めない(両手で2個持って続けて投げるのを防ぐ)
+            bool anyHeld = false;
+            foreach (ThrowableObject ball in balls)
+            {
+                anyHeld |= ball != null && ball.IsHeld;
+            }
+
+            bool waiting = state == State.Ready || (state == State.GameOver && restartOnGrab);
+            bool allowed = !inputLocked && waiting && !anyHeld;
             foreach (ThrowableObject ball in balls)
             {
                 if (ball != null && ball.TryGetComponent(out XRGrabInteractable grab))
                 {
-                    bool enable = allowed || grab.isSelected;
+                    // ファウルラインを越える前なら、投げたボールを拾い直せる
+                    bool canRetake = state == State.Rolling && ball == currentBall && !crossedFoulLine && !inputLocked;
+                    bool enable = allowed || grab.isSelected || canRetake;
                     if (grab.enabled != enable)
                     {
                         grab.enabled = enable;
@@ -188,10 +205,25 @@ namespace VRGame3.Sports.Bowling
             }
         }
 
+        private void OnBallGrabbed(SelectEnterEventArgs args)
+        {
+            // 「はじめに」パネルがないシーン向け:終わったあとにボールを掴むと新しいゲーム
+            if (state == State.GameOver && restartOnGrab && !inputLocked)
+            {
+                NewGame();
+            }
+        }
+
         private void OnBallReleased(ThrowableObject ball, Vector3 position)
         {
             if (state != State.Ready)
             {
+                // 投球中など、数えない間に離されたボールはすぐ置き台へ戻す(ピンを倒させない)
+                if (ball != currentBall)
+                {
+                    ReturnBall(ball);
+                }
+
                 return;
             }
 
@@ -267,7 +299,7 @@ namespace VRGame3.Sports.Bowling
 
             if (!crossedFoulLine)
             {
-                // ファウルラインより手前で落とした:投球に数えない(救済の自動転がしは投げ心地の調整で入れる)
+                // ファウルラインより手前で落とした(救済もしない場所・速さだった):投球に数えない
                 state = State.Ready;
                 return;
             }

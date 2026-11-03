@@ -149,6 +149,8 @@ namespace VRGame3.Sports.Bowling.EditorTools
             gameSo.FindProperty("scoreBoard").objectReferenceValue = scoreBoard;
             gameSo.FindProperty("foulLine").objectReferenceValue = foulLine;
             gameSo.FindProperty("pitDistance").floatValue = LaneEnd + 0.3f;
+            // 終わったあとの再開は「はじめに」パネルから行う
+            gameSo.FindProperty("restartOnGrab").boolValue = false;
             gameSo.ApplyModifiedPropertiesWithoutUndo();
             BowlingAudioBuilder.AddGameSounds(root, game, new Vector3(RidgeX, 2.85f, 2.5f),
                 RackPosition + new Vector3(0f, RackHeight, 0f));

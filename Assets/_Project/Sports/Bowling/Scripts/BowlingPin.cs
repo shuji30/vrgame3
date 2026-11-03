@@ -32,6 +32,9 @@ namespace VRGame3.Sports.Bowling
         private Vector3 spotPosition;
         private Quaternion spotRotation;
 
+        /// <summary>ピンの Rigidbody。</summary>
+        public Rigidbody Body => body;
+
         /// <summary>並べ直した回数。演出が「並べ直す前のピン」にだけ効くよう、途中で変わったら止めるのに使う。</summary>
         public int ResetCount { get; private set; }
 
