@@ -98,6 +98,11 @@ namespace VRGame3.Sports.TableTennis
         [Tooltip("ねらい打ちの円(台の子。このチャレンジの間だけ出す)")]
         [SerializeField] private GameObject aimTargets;
 
+        [Header("確認用")]
+        [Tooltip("オンにすると、「はじめる」で練習用の球出しになる(CPU がやさしい球を出し続け、点は数えない)。" +
+                 "すり抜けの確認(企画書のゲート)に使う。打った数と台に入った数を Console に出す")]
+        [SerializeField] private bool practiceFeed;
+
         [Header("チャレンジ(docs/plan.md「チャレンジ」)")]
         [Tooltip("ラリー10回:続ける往復の数・試せる回数")]
         [SerializeField] private int rallyNeed = 10;
@@ -128,6 +133,8 @@ namespace VRGame3.Sports.TableTennis
         private Transform serveHand;
         private float pointTimer;
         private bool lastWasNet;
+        private int practiceHits;
+        private int practiceLanded;
         private string challengeId;
         private int challengeCount;
         private int challengeTries;
@@ -189,6 +196,12 @@ namespace VRGame3.Sports.TableTennis
         /// <summary>新しいゲームを始める(「はじめに」パネルの「はじめる」から呼ぶ)。</summary>
         public void StartGame()
         {
+            if (practiceFeed)
+            {
+                StartChallenge("practice");
+                return;
+            }
+
             challengeId = null;
             BeginMatch(pointsToWin, true, SaveStore.Settings.cpuLevel);
         }
@@ -231,6 +244,11 @@ namespace VRGame3.Sports.TableTennis
                 case "tabletennis.aim":
                     BeginMatch(999, true, 0);
                     break;
+                case "practice":
+                    practiceHits = 0;
+                    practiceLanded = 0;
+                    BeginMatch(999, true, 0);
+                    break;
                 default:
                     BeginMatch(shortMatchPoints, false, 1);
                     break;
@@ -247,6 +265,9 @@ namespace VRGame3.Sports.TableTennis
                     break;
                 case "tabletennis.aim":
                     scoreBoard.ShowChallenge("ねらい打ち", $"{challengeCount}/{aimNeed}", $"のこり {aimBalls - challengeTries}球");
+                    break;
+                case "practice":
+                    scoreBoard.ShowChallenge("れんしゅう", $"{practiceLanded}", $"打った {practiceHits}");
                     break;
                 default:
                     scoreBoard.Refresh(match, challengeId == null ? label : $"5点マッチ  {label}");
@@ -281,7 +302,7 @@ namespace VRGame3.Sports.TableTennis
             cpu.ResetStance();
             // ラリー10回はいつもプレイヤーのサーブ、ねらい打ちはいつも CPU の球出し
             TTSide server = challengeId == "tabletennis.rally" ? TTSide.Player
-                : challengeId == "tabletennis.aim" ? TTSide.Cpu
+                : challengeId == "tabletennis.aim" || challengeId == "practice" ? TTSide.Cpu
                 : match.Server;
             judge = new RallyJudge(server);
             aimChecked = false;
@@ -303,7 +324,7 @@ namespace VRGame3.Sports.TableTennis
             if (state == State.CpuServe && !InputGate.GrabBlocked)
             {
                 state = State.Rally;
-                cpu.Serve(challengeId == "tabletennis.aim");
+                cpu.Serve(challengeId == "tabletennis.aim" || challengeId == "practice");
             }
             else if (state == State.CpuServe)
             {
@@ -429,7 +450,12 @@ namespace VRGame3.Sports.TableTennis
                         GameSession.InProgress = true;
                         ApplyAssist();
                         // ねらい打ちでは CPU は返さない(入ったかどうかだけを見る)
-                        if (challengeId != "tabletennis.aim")
+                        if (challengeId == "practice")
+                        {
+                            practiceHits++;
+                        }
+
+                        if (challengeId != "tabletennis.aim" && challengeId != "practice")
                         {
                             cpu.PlanReturn();
                         }
@@ -502,6 +528,15 @@ namespace VRGame3.Sports.TableTennis
                     return true;
                 }
             }
+            else if (challengeId == "practice")
+            {
+                practiceLanded++;
+                Debug.Log($"[卓球の練習] 打った {practiceHits} / 台に入った {practiceLanded}");
+                cpu.Cancel();
+                state = State.PointOver;
+                pointTimer = pointPause;
+                return true;
+            }
             else if (challengeId == "tabletennis.aim" && !aimChecked)
             {
                 aimChecked = true;
@@ -560,6 +595,15 @@ namespace VRGame3.Sports.TableTennis
         private void EndPoint(RallyJudge.Point point)
         {
             cpu.Cancel();
+            if (challengeId == "practice")
+            {
+                // 練習:点は数えず、次の球を出す
+                Debug.Log($"[卓球の練習] 打った {practiceHits} / 台に入った {practiceLanded}({point.Reason})");
+                state = State.PointOver;
+                pointTimer = pointPause;
+                return;
+            }
+
             if (lastWasNet && point.Reason != "2バウンド")
             {
                 point.Reason = "ネット";
