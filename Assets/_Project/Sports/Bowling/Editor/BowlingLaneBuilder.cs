@@ -14,7 +14,7 @@ namespace VRGame3.Sports.Bowling.EditorTools
     /// <summary>
     /// メニュー「VRGame3 > ボウリング場を作る」で、M1 のボウリング小屋(室内・2レーン)を仮の形状で組み立てる。
     /// 自分のレーン(X=0)と CPU のレーン(X=1.8、M3 で使う)・小屋・外の砂地と海・ピン・ボール置き台と
-    /// ボール3個・スコア板・XR Origin を配置する。寸法はレーンを本物に合わせ(ファウルラインから先頭のピンまで 18.29m)、
+    /// ボール3個・スコア板・音(BowlingAudioBuilder)・XR Origin を配置する。寸法はレーンを本物に合わせ(ファウルラインから先頭のピンまで 18.29m)、
     /// 小屋と色は docs/art-direction.md 第9章 M1「ボウリング小屋の仮組み」に合わせる。
     /// </summary>
     public static class BowlingLaneBuilder
@@ -96,6 +96,7 @@ namespace VRGame3.Sports.Bowling.EditorTools
             }
 
             SceneBuildUtility.EnsureFolder(SceneFolder);
+            BowlingAudioBuilder.ImportClips();
             var palette = new BowlingBuildPalette(MaterialFolder);
 
             Scene scene = EditorSceneManager.NewScene(NewSceneSetup.DefaultGameObjects, NewSceneMode.Single);
@@ -123,7 +124,10 @@ namespace VRGame3.Sports.Bowling.EditorTools
             BuildLaneGap(root.transform, palette, lanePhysics);
             BuildFloor(building, palette);
             BuildHut(building, palette);
-            BuildOutside(outside, palette);
+            List<Transform> palms = BuildOutside(outside, palette);
+            // 波は海側の3か所(左右の浜と、入口の先の浜)から鳴らす
+            BowlingAudioBuilder.BuildAmbient(outside, palms,
+                new[] { new Vector3(-12f, 0f, 6f), new Vector3(16f, 0f, 10f), new Vector3(1f, 0f, -22f) });
 
             Transform foulLine = BuildFoulLine(root.transform, "ファウルライン(自分のレーン)", PlayerLaneX, palette);
             BuildFoulLine(root.transform, "ファウルライン(CPU のレーン)", CpuLaneX, palette);
@@ -146,6 +150,8 @@ namespace VRGame3.Sports.Bowling.EditorTools
             gameSo.FindProperty("foulLine").objectReferenceValue = foulLine;
             gameSo.FindProperty("pitDistance").floatValue = LaneEnd + 0.3f;
             gameSo.ApplyModifiedPropertiesWithoutUndo();
+            BowlingAudioBuilder.AddGameSounds(root, game, new Vector3(RidgeX, 2.85f, 2.5f),
+                RackPosition + new Vector3(0f, RackHeight, 0f));
 
             Material arc = SceneBuildUtility.GetOrCreateArcMaterial(MaterialFolder, "B_TeleportArc");
             List<string> warnings = SceneBuildUtility.SetUpXROrigin(arc, palette.Reticle, PlayerPosition, Quaternion.identity,
@@ -326,7 +332,7 @@ namespace VRGame3.Sports.Bowling.EditorTools
         /// <summary>
         /// 小屋の外:砂地(小屋の床の下には入れない)・海・ヤシの木。どこにも TeleportArea を付けない。
         /// </summary>
-        private static void BuildOutside(Transform parent, BowlingBuildPalette palette)
+        private static List<Transform> BuildOutside(Transform parent, BowlingBuildPalette palette)
         {
             const float sandTop = -0.05f;
             const float sandBottom = -0.55f;
@@ -340,6 +346,7 @@ namespace VRGame3.Sports.Bowling.EditorTools
             MakeStatic(sea, parent);
 
             Vector3[] palms = { new Vector3(-6f, 0f, 2f), new Vector3(-7f, 0f, 10f), new Vector3(8f, 0f, -1f) };
+            var leafTransforms = new List<Transform>();
             for (int i = 0; i < palms.Length; i++)
             {
                 GameObject trunk = SceneBuildUtility.CreatePrimitive($"ヤシの幹{i + 1}", PrimitiveType.Cylinder,
@@ -348,7 +355,10 @@ namespace VRGame3.Sports.Bowling.EditorTools
                 GameObject leaves = SceneBuildUtility.CreatePrimitive($"ヤシの葉{i + 1}", PrimitiveType.Sphere,
                     palms[i] + new Vector3(0f, 4.1f, 0f), new Vector3(2.8f, 0.5f, 2.8f), palette.Leaf, false);
                 MakeStatic(leaves, parent);
+                leafTransforms.Add(leaves.transform);
             }
+
+            return leafTransforms;
         }
 
         private static Transform BuildFoulLine(Transform parent, string name, float x, BowlingBuildPalette palette)
@@ -423,6 +433,7 @@ namespace VRGame3.Sports.Bowling.EditorTools
             body.interpolation = RigidbodyInterpolation.Interpolate;
             body.collisionDetectionMode = CollisionDetectionMode.ContinuousSpeculative;
 
+            BowlingAudioBuilder.AddPinAudio(pin);
             return pin.AddComponent<BowlingPin>();
         }
 
@@ -472,6 +483,8 @@ namespace VRGame3.Sports.Bowling.EditorTools
                 returnSo.FindProperty("maxAwayTime").floatValue = 0f;
                 returnSo.FindProperty("stopDelay").floatValue = 5f;
                 returnSo.ApplyModifiedPropertiesWithoutUndo();
+
+                BowlingAudioBuilder.AddBallAudio(ball);
 
                 balls.Add(throwable);
             }
