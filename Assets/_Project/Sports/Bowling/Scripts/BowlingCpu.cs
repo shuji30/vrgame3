@@ -64,12 +64,15 @@ namespace VRGame3.Sports.Bowling
         [Tooltip("強さ3段階(やさしい / ふつう / つよい)")]
         [SerializeField] private Level[] levels =
         {
-            new Level { label = "やさしい", marks = "▲", color = new Color32(0x6C, 0xC3, 0x6A, 0xFF), speed = 7f, scatter = 0.15f },
-            new Level { label = "ふつう", marks = "▲▲", color = new Color32(0x3A, 0xA7, 0xFF, 0xFF), speed = 8f, scatter = 0.08f },
-            new Level { label = "つよい", marks = "▲▲▲", color = new Color32(0xFF, 0x8A, 0x3D, 0xFF), speed = 9f, scatter = 0.04f },
+            new Level { label = "やさしい", marks = "▲", color = new Color32(0x6C, 0xC3, 0x6A, 0xFF), speed = 7f, scatter = 0.38f },
+            new Level { label = "ふつう", marks = "▲▲", color = new Color32(0x3A, 0xA7, 0xFF, 0xFF), speed = 8f, scatter = 0.22f },
+            new Level { label = "つよい", marks = "▲▲▲", color = new Color32(0xFF, 0x8A, 0x3D, 0xFF), speed = 9f, scatter = 0.11f },
         };
 
         [Header("動き")]
+        [Tooltip("体から見た、待っているときの投げる手の位置(m)。腕を体の横に下ろした位置")]
+        [SerializeField] private Vector3 relaxedHand = new Vector3(0.2f, 0.78f, 0.05f);
+
         [Tooltip("待つ位置(ファウルラインからの手前の距離, m)")]
         [SerializeField] private float waitDistance = 3.2f;
 
@@ -115,7 +118,14 @@ namespace VRGame3.Sports.Bowling
         private void Awake()
         {
             waitPosition = body.position;
-            handRest = throwHand.localPosition;
+            // 待っている間は腕を体の横に下ろす(胸の前に突き出したままだと、人型のモデルで不自然な姿になる)
+            handRest = relaxedHand;
+            throwHand.localPosition = handRest;
+            Transform otherHand = body.Find("左手");
+            if (otherHand != null)
+            {
+                otherHand.localPosition = new Vector3(-relaxedHand.x, relaxedHand.y, relaxedHand.z);
+            }
             ball.gameObject.SetActive(false);
             // 回転の上限(既定 7 ラジアン/秒)のままだと、転がる回転に合わせて球が約 0.8m/秒まで減速してしまう
             ball.maxAngularVelocity = 100f;
