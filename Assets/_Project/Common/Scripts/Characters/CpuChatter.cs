@@ -9,7 +9,8 @@ namespace VRGame3.Common
     /// CPU(仮人形や girl.vrm)のおしゃべり。頭の上に短いセリフの吹き出しを出し、文字に合わせて
     /// 「ポポポ」という鳴き声のような声(その場で合成するオリジナルの音)を鳴らし、人型のモデルなら口を動かす。
     /// 吹き出しは名札(強さの札)を複製して作るので、シーンを作り直さなくても使える。
-    /// 本物の声に替えたいときは voiceClips に録音した音を入れる。
+    /// 音声合成の声(Tools/make_voices.ps1 で Resources/Voice に書き出した WAV)があれば、セリフごとにそれを鳴らす。
+    /// 無いセリフは合成した鳴き声で鳴らす。
     /// </summary>
     public class CpuChatter : MonoBehaviour
     {
@@ -46,6 +47,7 @@ namespace VRGame3.Common
         private HumanoidFace face;
         private Coroutine speaking;
         private float busyUntil;
+        private string[] voiceLines = new string[0];
 
         private void Awake()
         {
@@ -86,6 +88,14 @@ namespace VRGame3.Common
             voice.rolloffMode = AudioRolloffMode.Logarithmic;
             voice.dopplerLevel = 0f;
             syllables = voiceClips.Length > 0 ? voiceClips : MakeSyllables();
+
+            // 音声合成の声の一覧(lines.txt の行の順が voice_00, voice_01 ... の番号)
+            var list = Resources.Load<TextAsset>("Voice/lines");
+            if (list != null)
+            {
+                voiceLines = list.text.Replace("", string.Empty).Split('
+');
+            }
         }
 
         /// <summary>たまに話す(chattiness の割合で)。話している途中なら話さない。</summary>
@@ -129,6 +139,35 @@ namespace VRGame3.Common
             }
 
             float start = Time.time;
+            AudioClip spoken = SpokenClip(line);
+            if (spoken != null)
+            {
+                // 音声合成の声:鳴っている間、口をパクパクさせる
+                voice.pitch = 1f;
+                voice.PlayOneShot(spoken, Mathf.Min(1f, voiceVolume * 2.5f));
+                float end = Time.time + spoken.length;
+                while (Time.time < end)
+                {
+                    face?.SetMouth(Random.Range(0.3f, 1f));
+                    yield return new WaitForSeconds(0.08f);
+                }
+
+                face?.SetMouth(0f);
+                float wait = minShowTime - (Time.time - start);
+                if (wait > 0f)
+                {
+                    yield return new WaitForSeconds(wait);
+                }
+
+                if (bubble != null)
+                {
+                    bubble.SetActive(false);
+                }
+
+                speaking = null;
+                yield break;
+            }
+
             foreach (char c in line)
             {
                 if (char.IsWhiteSpace(c) || c == '!' || c == '!' || c == '?' || c == '?' || c == '…' || c == '〜' || c == 'ー')
@@ -160,6 +199,20 @@ namespace VRGame3.Common
             }
 
             speaking = null;
+        }
+
+        /// <summary>セリフの音声合成の声(無ければ null)。</summary>
+        private AudioClip SpokenClip(string line)
+        {
+            for (int i = 0; i < voiceLines.Length; i++)
+            {
+                if (voiceLines[i].Trim() == line)
+                {
+                    return Resources.Load<AudioClip>($"Voice/voice_{i:D2}");
+                }
+            }
+
+            return null;
         }
 
         private void LateUpdate()
