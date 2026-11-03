@@ -29,6 +29,10 @@ namespace VRGame3.Common
         [Tooltip("声の高さ(ピッチの倍率)")]
         [SerializeField] private float voicePitch = 1.35f;
 
+        [Tooltip("音声合成の声を鳴らすときの高さ(ピッチの倍率)。大きいほど高く、少し早口になる")]
+        [Range(0.8f, 1.6f)]
+        [SerializeField] private float spokenPitch = 1.25f;
+
         [Tooltip("声の音量(0〜1)")]
         [Range(0f, 1f)]
         [SerializeField] private float voiceVolume = 0.35f;
@@ -142,9 +146,9 @@ namespace VRGame3.Common
             if (spoken != null)
             {
                 // 音声合成の声:鳴っている間、口をパクパクさせる
-                voice.pitch = 1f;
+                voice.pitch = spokenPitch;
                 voice.PlayOneShot(spoken, Mathf.Min(1f, voiceVolume * 2.5f));
-                float end = Time.time + spoken.length;
+                float end = Time.time + spoken.length / Mathf.Max(0.1f, spokenPitch);
                 while (Time.time < end)
                 {
                     face?.SetMouth(Random.Range(0.3f, 1f));
