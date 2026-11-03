@@ -16,5 +16,8 @@ namespace VRGame3.Common
 
         /// <summary>クリアしたチャレンジの ID(版 2 から)。</summary>
         public List<string> clearedChallenges = new List<string>();
+
+        /// <summary>てびき(チュートリアル)を見終わった場所の ID(版 3 から。hub / bowling / archery / tabletennis)。</summary>
+        public List<string> seenTutorials = new List<string>();
     }
 }

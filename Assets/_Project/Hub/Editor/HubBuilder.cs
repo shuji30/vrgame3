@@ -213,11 +213,13 @@ namespace VRGame3.Hub.EditorTools
                 source.playOnAwake = true;
                 source.volume = 0.06f;
                 source.pitch = 0.95f + 0.05f * i;
+                wave.AddComponent<SoundCategory>();
             }
 
             var birds = new GameObject("鳥");
             birds.transform.SetParent(parent, false);
             Source(birds, true, 1f, 30f);
+            birds.AddComponent<SoundCategory>();
             var oneShot = birds.AddComponent<RandomOneShot>();
             var so = new SerializedObject(oneShot);
             SerializedProperty clips = so.FindProperty("clips");
@@ -244,6 +246,7 @@ namespace VRGame3.Hub.EditorTools
             windSource.loop = true;
             windSource.playOnAwake = true;
             windSource.volume = 0.04f;
+            wind.AddComponent<SoundCategory>();
 
             var bgm = new GameObject("BGM");
             bgm.transform.SetParent(parent, false);
@@ -253,6 +256,7 @@ namespace VRGame3.Hub.EditorTools
             bgmSource.playOnAwake = true;
             // 8.5 の目安 -22dB
             bgmSource.volume = 0.08f;
+            bgm.AddComponent<SoundCategory>();
         }
 
         private static AudioSource Source(GameObject go, bool spatial, float minDistance, float maxDistance)

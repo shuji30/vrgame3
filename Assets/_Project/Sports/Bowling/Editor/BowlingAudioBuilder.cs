@@ -153,11 +153,13 @@ namespace VRGame3.Sports.Bowling.EditorTools
                 source.volume = WaveVolume;
                 // 3か所が同じ波の音でそろわないよう、ピッチを少しずつずらす
                 source.pitch = 0.95f + 0.05f * i;
+                wave.AddComponent<SoundCategory>();
             }
 
             var birds = new GameObject("鳥");
             birds.transform.SetParent(ambient.transform, false);
             AddSource(birds, 3f, 40f);
+            birds.AddComponent<SoundCategory>();
             var oneShot = birds.AddComponent<RandomOneShot>();
             var so = new SerializedObject(oneShot);
             SetClips(so.FindProperty("clips"), Clips("AMB_Bird_", 4));
@@ -179,6 +181,7 @@ namespace VRGame3.Sports.Bowling.EditorTools
             windSource.loop = true;
             windSource.playOnAwake = true;
             windSource.volume = WindVolume;
+            wind.AddComponent<SoundCategory>();
         }
 
         /// <summary>3D の AudioSource(距離減衰は Logarithmic)。</summary>

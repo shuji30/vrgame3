@@ -670,6 +670,7 @@ namespace VRGame3.Sports.Archery.EditorTools
                 source.playOnAwake = true;
                 source.volume = 0.06f;
                 source.pitch = 0.95f + 0.07f * i;
+                go.AddComponent<SoundCategory>();
             }
         }
 

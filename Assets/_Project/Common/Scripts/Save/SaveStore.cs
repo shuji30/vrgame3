@@ -13,7 +13,8 @@ namespace VRGame3.Common
     public static class SaveStore
     {
         // 2:クリアしたチャレンジの一覧を足した
-        public const int CurrentVersion = 2;
+        // 3:時間帯・音量・選んだ見た目・てびきを見た印を足した
+        public const int CurrentVersion = 3;
         private const string FileName = "save.json";
 
         private static SaveData data;
@@ -75,6 +76,26 @@ namespace VRGame3.Common
                 return;
             }
 
+            Save();
+        }
+
+        /// <summary>その場所のてびきを見終わったか。</summary>
+        public static bool HasSeenTutorial(string id) => Data.seenTutorials.Contains(id);
+
+        /// <summary>てびきを見終わった印を付けて保存する。</summary>
+        public static void MarkTutorialSeen(string id)
+        {
+            if (!Data.seenTutorials.Contains(id))
+            {
+                Data.seenTutorials.Add(id);
+                Save();
+            }
+        }
+
+        /// <summary>てびきを見た印を全部消す(「あそびかたを さいしょから」)。</summary>
+        public static void ResetTutorials()
+        {
+            Data.seenTutorials.Clear();
             Save();
         }
 
@@ -194,6 +215,7 @@ namespace VRGame3.Common
                 loaded.settings ??= new GameSettings();
                 loaded.records ??= new System.Collections.Generic.List<SportRecord>();
                 loaded.clearedChallenges ??= new System.Collections.Generic.List<string>();
+                loaded.seenTutorials ??= new System.Collections.Generic.List<string>();
                 loaded.records.RemoveAll(r => r == null || string.IsNullOrEmpty(r.sportId));
                 loaded.settings.Clamp();
                 loaded.version = CurrentVersion;

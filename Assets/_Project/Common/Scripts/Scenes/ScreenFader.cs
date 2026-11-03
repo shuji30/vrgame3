@@ -97,6 +97,8 @@ namespace VRGame3.Common
         private void SetAlpha(float value)
         {
             alpha = Mathf.Clamp01(value);
+            // 暗くするのと同時に BGM・環境音も下げる(docs/art-direction.md 7.4)
+            SoundCategory.SetDuck(1f - alpha);
             if (material == null)
             {
                 return;

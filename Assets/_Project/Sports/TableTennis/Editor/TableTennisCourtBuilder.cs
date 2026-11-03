@@ -538,6 +538,7 @@ namespace VRGame3.Sports.TableTennis.EditorTools
                 source.playOnAwake = true;
                 source.volume = loops[i].volume;
                 source.pitch = 0.95f + 0.05f * i;
+                source.gameObject.AddComponent<SoundCategory>();
             }
         }
 
