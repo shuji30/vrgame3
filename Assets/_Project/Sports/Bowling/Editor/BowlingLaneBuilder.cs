@@ -23,6 +23,7 @@ namespace VRGame3.Sports.Bowling.EditorTools
         private const string ScenePath = SceneFolder + "/Bowling.unity";
         private const string MaterialFolder = "Assets/_Project/Art/Materials/Bowling";
         private const string PhysicsFolder = "Assets/_Project/Sports/Bowling/Physics";
+        private const string ModelFolder = "Assets/_Project/Sports/Bowling/Models";
 
         // レーンの寸法(m)。Z+ がピンの方向、ファウルラインが Z=0、レーンの上面が Y=0
         private const float PlayerLaneX = 0f;
@@ -59,9 +60,7 @@ namespace VRGame3.Sports.Bowling.EditorTools
         // テレポートできる床(自分のレーンの助走路側)の右端
         private const float TeleportMaxX = 0.6f;
 
-        // ピンの寸法(本物はおよそ高さ 38cm、一番太い所で直径 12cm、1.5kg)
-        private const float PinHeight = 0.38f;
-        private const float PinRadius = 0.06f;
+        // ピンの重さ(本物はおよそ 1.5kg)。形は BowlingPinMeshBuilder を参照
         private const float PinMass = 1.5f;
 
         // ボールの寸法(本物は直径 21.8cm)
@@ -371,6 +370,7 @@ namespace VRGame3.Sports.Bowling.EditorTools
             setterObject.transform.position = new Vector3(laneX, 0f, HeadPinDistance);
             var setter = setterObject.AddComponent<PinSetter>();
 
+            Mesh pinMesh = BowlingPinMeshBuilder.GetOrCreate(ModelFolder);
             float rowDepth = PinSpacing * Mathf.Sqrt(3f) / 2f;
             var pins = new List<BowlingPin>();
             int number = 1;
@@ -380,7 +380,7 @@ namespace VRGame3.Sports.Bowling.EditorTools
                 {
                     float x = laneX + (i - row / 2f) * PinSpacing;
                     var position = new Vector3(x, 0.001f, HeadPinDistance + row * rowDepth);
-                    pins.Add(BuildPin(setterObject.transform, $"ピン{number}", position, palette.Pin, pinPhysics));
+                    pins.Add(BuildPin(setterObject.transform, $"ピン{number}", position, pinMesh, palette, pinPhysics));
                     number++;
                 }
             }
@@ -398,31 +398,25 @@ namespace VRGame3.Sports.Bowling.EditorTools
         }
 
         /// <summary>
-        /// ピン1本。原点を底に置く。カプセルの当たり判定だけだと底が丸くて立たないので、
-        /// 底に平らな箱の当たり判定を足す。
+        /// ピン1本。原点を底に置く。見た目は本物に近い輪郭の回転体メッシュ(首に赤い帯2本)、
+        /// 当たり判定は同じメッシュの凸形状にする(底が平らなので立ったまま安定する)。
         /// </summary>
-        private static BowlingPin BuildPin(Transform parent, string name, Vector3 position, Material material,
-            PhysicsMaterial physics)
+        private static BowlingPin BuildPin(Transform parent, string name, Vector3 position, Mesh mesh,
+            BowlingBuildPalette palette, PhysicsMaterial physics)
         {
             var pin = new GameObject(name);
             pin.transform.SetParent(parent, false);
             pin.transform.position = position;
 
-            GameObject visual = SceneBuildUtility.CreatePrimitive("見た目", PrimitiveType.Capsule, Vector3.zero,
-                new Vector3(PinRadius * 2f, PinHeight / 2f, PinRadius * 2f), material, false);
+            var visual = new GameObject("見た目");
             visual.transform.SetParent(pin.transform, false);
-            visual.transform.localPosition = new Vector3(0f, PinHeight / 2f, 0f);
+            visual.AddComponent<MeshFilter>().sharedMesh = mesh;
+            visual.AddComponent<MeshRenderer>().sharedMaterials = new[] { palette.Pin, palette.PinStripe };
 
-            var capsule = pin.AddComponent<CapsuleCollider>();
-            capsule.radius = PinRadius;
-            capsule.height = PinHeight;
-            capsule.center = new Vector3(0f, PinHeight / 2f, 0f);
-            capsule.sharedMaterial = physics;
-
-            var foot = pin.AddComponent<BoxCollider>();
-            foot.size = new Vector3(0.06f, 0.02f, 0.06f);
-            foot.center = new Vector3(0f, 0.01f, 0f);
-            foot.sharedMaterial = physics;
+            var collider = pin.AddComponent<MeshCollider>();
+            collider.sharedMesh = mesh;
+            collider.convex = true;
+            collider.sharedMaterial = physics;
 
             var body = pin.AddComponent<Rigidbody>();
             body.mass = PinMass;

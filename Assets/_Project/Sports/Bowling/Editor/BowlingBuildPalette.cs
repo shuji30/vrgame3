@@ -19,6 +19,7 @@ namespace VRGame3.Sports.Bowling.EditorTools
         public readonly Material Accent;        // 幕板・日よけ・奥のクッション
         public readonly Material Leaf;          // ヤシの葉
         public readonly Material Pin;
+        public readonly Material PinStripe;     // ピンの首の赤い帯
         public readonly Material Board;         // スコア板
         public readonly Material TagPlayer;     // スコア板のプレイヤーの段の札
         public readonly Material TagCpu;        // スコア板の CPU の段の札
@@ -42,6 +43,7 @@ namespace VRGame3.Sports.Bowling.EditorTools
             Accent = Lit(folder, "B_Accent", "#FF7F6B");
             Leaf = Lit(folder, "B_Leaf", "#6CC36A");
             Pin = Lit(folder, "B_Pin", "#FFFDF7");
+            PinStripe = Lit(folder, "B_PinStripe", "#E0525E");
             Board = Lit(folder, "B_Board", "#4A4660");
             TagPlayer = Lit(folder, "B_TagPlayer", "#3AA7FF");
             TagCpu = Lit(folder, "B_TagCpu", "#FF8A3D");

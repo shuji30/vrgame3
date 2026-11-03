@@ -1,6 +1,7 @@
 using System;
 using UnityEngine;
 using UnityEngine.XR.Interaction.Toolkit;
+using UnityEngine.XR.Interaction.Toolkit.Attachment;
 using UnityEngine.XR.Interaction.Toolkit.Interactables;
 
 namespace VRGame3.Common
@@ -28,6 +29,10 @@ namespace VRGame3.Common
 
         [Tooltip("回転の速さの上限(ラジアン/秒)")]
         [SerializeField] private float maxAngularSpeed = 30f;
+
+        [Header("掴み方")]
+        [Tooltip("オンにすると、遠くからレイで掴んだときも手元に引き寄せて持つ。オフだと掴んだ距離に浮いたまま付いてくる")]
+        [SerializeField] private bool pullToHand = true;
 
         [Header("転がり")]
         [Tooltip("床などに触れて転がっているときの減速の強さ(m/秒²)。0 で減速なし(どこまでも転がる)。空中では効かない")]
@@ -80,6 +85,13 @@ namespace VRGame3.Common
 
             // 投げる速度はこの部品で決めるので、XRI 側の投げ処理は止める
             grab.throwOnDetach = false;
+
+            // 遠くから掴んでも手元に寄せる。掴んだ位置のずれも残さず、手の位置にボールの中心を合わせる
+            if (pullToHand)
+            {
+                grab.farAttachMode = InteractableFarAttachMode.Near;
+                grab.useDynamicAttach = false;
+            }
             body.interpolation = RigidbodyInterpolation.Interpolate;
             body.collisionDetectionMode = CollisionDetectionMode.ContinuousSpeculative;
         }
