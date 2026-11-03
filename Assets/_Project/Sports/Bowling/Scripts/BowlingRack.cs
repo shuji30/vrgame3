@@ -46,8 +46,20 @@ namespace VRGame3.Sports.Bowling
         private float boardOffsetX;
         private Quaternion boardRotation;
 
+        // 組み立てたときの、置き台から見た各ボールの前後の位置(ボールが置き台にないときでも正しく置き直すため)
+        private float[] ballLocalZ = new float[0];
+
         private void Awake()
         {
+            ballLocalZ = new float[balls.Length];
+            for (int i = 0; i < balls.Length; i++)
+            {
+                if (balls[i] != null)
+                {
+                    ballLocalZ[i] = transform.InverseTransformPoint(balls[i].transform.position).z;
+                }
+            }
+
             if (smallScoreBoard != null)
             {
                 boardOffsetX = smallScoreBoard.position.x - rightHandX;
@@ -98,15 +110,15 @@ namespace VRGame3.Sports.Bowling
                 }
             }
 
-            foreach (ThrowableObject ball in balls)
+            for (int i = 0; i < balls.Length; i++)
             {
+                ThrowableObject ball = balls[i];
                 if (ball == null || ball.IsHeld)
                 {
                     continue;
                 }
 
-                Vector3 position = new Vector3(x, transform.position.y + rackHeight + ballDiameter / 2f + 0.02f,
-                    ball.transform.position.z);
+                Vector3 position = transform.TransformPoint(new Vector3(0f, rackHeight + ballDiameter / 2f + 0.02f, ballLocalZ[i]));
                 var body = ball.GetComponent<Rigidbody>();
                 body.linearVelocity = Vector3.zero;
                 body.angularVelocity = Vector3.zero;

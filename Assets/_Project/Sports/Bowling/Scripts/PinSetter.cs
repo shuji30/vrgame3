@@ -54,6 +54,28 @@ namespace VRGame3.Sports.Bowling
             return count;
         }
 
+        /// <summary>
+        /// 立っているピンの揺れが収まったか。倒れたピンは数に関係しないので見ない。
+        /// </summary>
+        public bool AreStandingPinsSettled(float maxSpeed = 0.05f, float maxAngularSpeed = 0.5f)
+        {
+            foreach (BowlingPin pin in pins)
+            {
+                if (pin.IsKnockedDown)
+                {
+                    continue;
+                }
+
+                var body = pin.GetComponent<Rigidbody>();
+                if (body.linearVelocity.magnitude > maxSpeed || body.angularVelocity.magnitude > maxAngularSpeed)
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
         /// <summary>MarkStandingPins のあとに倒れたピンを results に入れる(演出で使う)。</summary>
         public void GetKnockedSinceMark(List<BowlingPin> results)
         {

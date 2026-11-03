@@ -14,7 +14,7 @@ namespace VRGame3.Sports.Bowling
         [SerializeField] private float knockedAngle = 30f;
 
         [Tooltip("置いた高さからこの距離(m)以上下がったら倒れたとみなす(ピットに落ちた場合など)")]
-        [SerializeField] private float knockedDrop = 0.1f;
+        [SerializeField] private float knockedDrop = 0.05f;
 
         [Tooltip("重心の高さ(m、ピンの底から)。低いほど倒れにくい。本物のピンは高さ 38cm に対しておよそ 14cm")]
         [Range(0.05f, 0.3f)]

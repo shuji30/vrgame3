@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.XR.Interaction.Toolkit;
 using UnityEngine.XR.Interaction.Toolkit.Interactables;
 using VRGame3.Common;
 
@@ -49,8 +48,11 @@ namespace VRGame3.Sports.Bowling
         [Tooltip("投げてからこの秒数たったら、どこにあっても投球を終える")]
         [SerializeField] private float maxRollTime = 12f;
 
-        [Tooltip("投球が終わってから、倒れた本数を数えるまで待つ秒数(ピンが落ち着くのを待つ)")]
+        [Tooltip("投球が終わってから、倒れた本数を数えるまで最低限待つ秒数(このあと立っているピンが止まるのを待つ)")]
         [SerializeField] private float settleTime = 2f;
+
+        [Tooltip("ピンが揺れ続けていても、この秒数たったら数える")]
+        [SerializeField] private float maxSettleTime = 5f;
 
         [Header("投げ損ねの救済")]
         [Tooltip("ファウルラインの手前で止まったボールを、自動で転がし直すか")]
@@ -65,6 +67,12 @@ namespace VRGame3.Sports.Bowling
         [Tooltip("救済するとき、レーンの中心から左右にこの距離(m)より外にあれば、内側へ寄せてから転がす")]
         [SerializeField] private float rescueMaxOffset = 0.35f;
 
+        [Tooltip("ボールの中心が床からこの高さ(m)より上にあるときは救済しない(置き台の上など)")]
+        [SerializeField] private float rescueMaxHeight = 0.25f;
+
+        [Tooltip("レーンの中心から左右にこの距離(m)より離れているときは救済しない")]
+        [SerializeField] private float rescueMaxLateral = 1.0f;
+
         [Header("片付け")]
         [Tooltip("記録してから、倒れたピンを片付けてボールを戻すまで待つ秒数")]
         [SerializeField] private float clearDelay = 1f;
@@ -77,6 +85,9 @@ namespace VRGame3.Sports.Bowling
         /// 演出や効果音はここにつなぐ。この時点では倒れたピンはまだ片付けておらず、PinSetter から調べられる。
         /// </summary>
         public event Action<int, int, int, string> RollRecorded;
+
+        /// <summary>投球のあと、ボールを置き台へ戻したとき(戻りの音などをつなぐ)。</summary>
+        public event Action BallReturned;
 
         /// <summary>10フレームが終わったとき。引数は合計点。</summary>
         public event Action<int> GameFinished;
@@ -92,6 +103,7 @@ namespace VRGame3.Sports.Bowling
         private bool rescued;
         private float clearTimer;
         private bool resetRackOnClear;
+        private bool inputLocked;
 
         /// <summary>投げるボール。</summary>
         public IReadOnlyList<ThrowableObject> Balls => balls;
@@ -112,7 +124,6 @@ namespace VRGame3.Sports.Bowling
                 }
 
                 ball.Released += OnBallReleased;
-                ball.GetComponent<XRGrabInteractable>().selectEntered.AddListener(OnBallGrabbed);
             }
         }
 
@@ -126,7 +137,6 @@ namespace VRGame3.Sports.Bowling
                 }
 
                 ball.Released -= OnBallReleased;
-                ball.GetComponent<XRGrabInteractable>().selectEntered.RemoveListener(OnBallGrabbed);
             }
         }
 
@@ -148,11 +158,33 @@ namespace VRGame3.Sports.Bowling
             scoreBoard.Refresh(sheet);
         }
 
-        private void OnBallGrabbed(SelectEnterEventArgs args)
+        /// <summary>
+        /// ボールを掴めないようにする(「はじめに」パネルが出ている間など)。掴んでいるボールは離すまでそのまま。
+        /// </summary>
+        public void SetInputLocked(bool locked)
         {
-            if (state == State.GameOver)
+            inputLocked = locked;
+            UpdateGrabbable();
+        }
+
+        /// <summary>
+        /// ボールを掴めるのは、ロックされておらず次の投球を待っている(Ready)間だけにする。
+        /// 投球中・数えている間・片付けの間に別のボールを投げたり、転がっているボールを掴み直したりできないようにする。
+        /// 掴んでいる最中のボールは無効にしない(XRI が掴むのを取り消して、ボールが勝手に飛ぶのを防ぐ)。
+        /// </summary>
+        private void UpdateGrabbable()
+        {
+            bool allowed = !inputLocked && state == State.Ready;
+            foreach (ThrowableObject ball in balls)
             {
-                NewGame();
+                if (ball != null && ball.TryGetComponent(out XRGrabInteractable grab))
+                {
+                    bool enable = allowed || grab.isSelected;
+                    if (grab.enabled != enable)
+                    {
+                        grab.enabled = enable;
+                    }
+                }
             }
         }
 
@@ -175,14 +207,17 @@ namespace VRGame3.Sports.Bowling
 
         private void Update()
         {
+            UpdateGrabbable();
+
             switch (state)
             {
                 case State.Rolling:
                     UpdateRolling();
                     break;
                 case State.Settling:
-                    settleTimer -= Time.deltaTime;
-                    if (settleTimer <= 0f)
+                    // 最短の待ち時間がたち、立っているピンの揺れが収まってから数える。収まらなくても上限で数える
+                    settleTimer += Time.deltaTime;
+                    if (settleTimer >= settleTime && (pinSetter.AreStandingPinsSettled() || settleTimer >= maxSettleTime))
                     {
                         RecordRoll();
                     }
@@ -237,20 +272,24 @@ namespace VRGame3.Sports.Bowling
                 return;
             }
 
-            settleTimer = settleTime;
+            settleTimer = 0f;
             state = State.Settling;
         }
 
-        /// <summary>
-        /// 倒れた本数を記録してスコア板を更新し、演出(RollRecorded)に知らせる。
-        /// ピンはまだ倒れたまま残しておき、clearDelay 秒後に ClearPins で片付ける。
-        /// </summary>
         /// <summary>
         /// 投げたつもりのボールがファウルラインの手前で止まったら、レーンの向きに転がし直す(1投につき1回)。
         /// </summary>
         private bool TryRescue(Rigidbody body)
         {
             if (!rescueEnabled || rescued || maxForwardSpeed < rescueMinForwardSpeed)
+            {
+                return false;
+            }
+
+            // 置き台に戻した・手前の別の場所に置いたときは救済しない(床の上で、レーンの近くにあるときだけ)
+            float height = body.position.y - foulLine.position.y;
+            float side = Mathf.Abs(Vector3.Dot(body.position - foulLine.position, foulLine.right));
+            if (height > rescueMaxHeight || side > rescueMaxLateral)
             {
                 return false;
             }
@@ -272,6 +311,10 @@ namespace VRGame3.Sports.Bowling
             return true;
         }
 
+        /// <summary>
+        /// 倒れた本数を記録してスコア板を更新し、演出(RollRecorded)に知らせる。
+        /// ピンはまだ倒れたまま残しておき、clearDelay 秒後に ClearPins で片付ける。
+        /// </summary>
         private void RecordRoll()
         {
             int frame = sheet.CurrentFrame;
@@ -313,6 +356,7 @@ namespace VRGame3.Sports.Bowling
 
             ReturnBall(currentBall);
             currentBall = null;
+            BallReturned?.Invoke();
 
             if (sheet.IsGameOver)
             {

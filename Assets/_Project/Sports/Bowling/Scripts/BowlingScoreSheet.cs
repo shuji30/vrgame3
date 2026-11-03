@@ -110,6 +110,29 @@ namespace VRGame3.Sports.Bowling
         }
 
         /// <summary>
+        /// そのフレームの rollIndex 投目が、10本を並べ直したばかりのピンに投げる投球か。
+        /// 各フレームの1投目と、10フレーム目でストライク・スペアのあとの投球が当てはまる。
+        /// </summary>
+        private bool IsFreshRack(int frame, int rollIndex)
+        {
+            List<int> rolls = frames[frame];
+            int standing = PinCount;
+            bool fresh = true;
+            for (int i = 0; i < rollIndex && i < rolls.Count; i++)
+            {
+                standing -= rolls[i];
+                fresh = false;
+                if (standing == 0)
+                {
+                    standing = PinCount;
+                    fresh = true;
+                }
+            }
+
+            return fresh;
+        }
+
+        /// <summary>
         /// そのフレームまでの累計点。ストライク・スペアのボーナスがまだ決まらないときは null。
         /// </summary>
         public int? GetCumulativeScore(int frame)
@@ -233,8 +256,9 @@ namespace VRGame3.Sports.Bowling
             int standingBefore = PinsStandingBefore(frame, rollIndex);
             if (pins == standingBefore && pins > 0)
             {
-                // 10本並んだ状態から全部倒せばストライク、残りを全部倒せばスペア
-                return standingBefore == PinCount ? "X" : "/";
+                // 並べ直したばかりの10本を全部倒せばストライク、残りを全部倒せばスペア。
+                // 1投目が0本のあとの10本はスペア(立っている本数は10でも並べ直してはいない)
+                return IsFreshRack(frame, rollIndex) ? "X" : "/";
             }
 
             return pins == 0 ? "-" : pins.ToString();

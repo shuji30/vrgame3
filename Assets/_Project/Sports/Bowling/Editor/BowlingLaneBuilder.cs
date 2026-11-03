@@ -575,10 +575,10 @@ namespace VRGame3.Sports.Bowling.EditorTools
             for (int f = 0; f < BowlingScoreSheet.FrameCount; f++)
             {
                 frameNumbers[f] = Text(boardObject.transform, $"フレーム番号{f + 1}", (f + 1).ToString(),
-                    new Vector3(firstCellX + cellWidth * f, 3.42f, textZ), cellWidth, 1.0f, palette.TextColor);
+                    new Vector3(firstCellX + cellWidth * f, 3.42f, textZ), cellWidth, 1.3f, palette.TextColor);
             }
 
-            Text(boardObject.transform, "合計の見出し", "TOTAL", new Vector3(totalX, 3.42f, textZ), totalWidth, 1.0f, palette.TextColor);
+            Text(boardObject.transform, "合計の見出し", "TOTAL", new Vector3(totalX, 3.42f, textZ), totalWidth, 1.3f, palette.TextColor);
 
             // 上段(自分)と下段(CPU)
             var board = boardObject.AddComponent<BowlingScoreBoard>();
@@ -612,6 +612,16 @@ namespace VRGame3.Sports.Bowling.EditorTools
             TMP_Text message = Text(boardObject.transform, "大きな文字", "STRIKE!", new Vector3(PlayerLaneX, 1.6f, 14f), 3f, 6f,
                 palette.HighlightColor);
             message.fontStyle = FontStyles.Bold;
+            // 「GAME 300」のように長い文字でも隣のレーンにはみ出さないよう、幅に合わせて縮める
+            message.enableAutoSizing = true;
+            message.fontSizeMin = 3f;
+            message.fontSizeMax = 6f;
+            // 景色の上でも読めるよう縁取りを付ける(方針書 6.1)
+            Material outline = GetOrCreateOutlineMaterial();
+            if (outline != null)
+            {
+                message.fontSharedMaterial = outline;
+            }
             message.gameObject.SetActive(false);
 
             var so = new SerializedObject(board);
@@ -643,7 +653,7 @@ namespace VRGame3.Sports.Bowling.EditorTools
             float rowCenterY = (rollY + scoreY) / 2f;
             Box(parent, $"{name}の札", new Vector3(labelX, rowCenterY, textZ + 0.01f), new Vector3(0.36f, 0.44f, 0.01f),
                 tagMaterial, null);
-            Text(parent, $"{name}の名前", label, new Vector3(labelX, rowCenterY, textZ - 0.005f), 0.36f, 1.1f, palette.TextColor);
+            Text(parent, $"{name}の名前", label, new Vector3(labelX, rowCenterY, textZ - 0.005f), 0.36f, 1.3f, palette.TextColor);
 
             var row = new ScoreRowTexts
             {
@@ -653,9 +663,9 @@ namespace VRGame3.Sports.Bowling.EditorTools
             for (int f = 0; f < BowlingScoreSheet.FrameCount; f++)
             {
                 float x = firstCellX + cellWidth * f;
-                row.Rolls[f] = Text(parent, $"{name}の投球{f + 1}", string.Empty, new Vector3(x, rollY, textZ), cellWidth, 1.5f,
+                row.Rolls[f] = Text(parent, $"{name}の投球{f + 1}", string.Empty, new Vector3(x, rollY, textZ), cellWidth, 1.7f,
                     palette.TextColor);
-                row.Scores[f] = Text(parent, $"{name}の累計{f + 1}", string.Empty, new Vector3(x, scoreY, textZ), cellWidth, 1.6f,
+                row.Scores[f] = Text(parent, $"{name}の累計{f + 1}", string.Empty, new Vector3(x, scoreY, textZ), cellWidth, 1.7f,
                     palette.TextColor);
             }
 
@@ -726,6 +736,32 @@ namespace VRGame3.Sports.Bowling.EditorTools
             {
                 property.GetArrayElementAtIndex(i).objectReferenceValue = values[i];
             }
+        }
+
+        /// <summary>
+        /// 縁取り付きの文字のマテリアル。既定のフォントのマテリアルを複製し、縁取りを有効にする。
+        /// </summary>
+        private static Material GetOrCreateOutlineMaterial()
+        {
+            string path = $"{MaterialFolder}/B_TextOutline.mat";
+            var existing = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (existing != null)
+            {
+                return existing;
+            }
+
+            TMP_FontAsset font = TMP_Settings.defaultFontAsset;
+            if (font == null || font.material == null)
+            {
+                return null;
+            }
+
+            var material = new Material(font.material);
+            material.EnableKeyword("OUTLINE_ON");
+            material.SetFloat("_OutlineWidth", 0.2f);
+            material.SetColor("_OutlineColor", new Color32(0x3A, 0x35, 0x50, 0xFF));
+            AssetDatabase.CreateAsset(material, path);
+            return material;
         }
 
         private static PhysicsMaterial GetOrCreatePhysicsMaterial(string name, float friction, float bounciness)

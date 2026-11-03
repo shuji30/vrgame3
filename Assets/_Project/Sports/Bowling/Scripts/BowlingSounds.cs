@@ -53,8 +53,23 @@ namespace VRGame3.Sports.Bowling
 
         private void Start()
         {
-            // 握っていなくても祝福として両手を振動させるため、手の Interactor を集めておく
-            hands = FindObjectsByType<XRBaseInputInteractor>(FindObjectsSortMode.None);
+            // 握っていなくても祝福として両手を振動させるため、左右の手の Interactor を1つずつ集めておく
+            // (1つの手に Near-Far や Poke など複数あると、同じ振動を重ねて送ってしまうため)
+            XRBaseInputInteractor left = null;
+            XRBaseInputInteractor right = null;
+            foreach (XRBaseInputInteractor interactor in FindObjectsByType<XRBaseInputInteractor>(FindObjectsSortMode.None))
+            {
+                if (interactor.handedness == InteractorHandedness.Left && left == null)
+                {
+                    left = interactor;
+                }
+                else if (interactor.handedness == InteractorHandedness.Right && right == null)
+                {
+                    right = interactor;
+                }
+            }
+
+            hands = new[] { left, right };
         }
 
         private void OnEnable()
@@ -62,6 +77,7 @@ namespace VRGame3.Sports.Bowling
             if (game != null)
             {
                 game.RollRecorded += OnRollRecorded;
+                game.BallReturned += OnBallReturned;
             }
         }
 
@@ -70,6 +86,7 @@ namespace VRGame3.Sports.Bowling
             if (game != null)
             {
                 game.RollRecorded -= OnRollRecorded;
+                game.BallReturned -= OnBallReturned;
             }
         }
 
@@ -94,7 +111,10 @@ namespace VRGame3.Sports.Bowling
             {
                 PlayJingle(gutterClip, gutterVolume);
             }
+        }
 
+        private void OnBallReturned()
+        {
             if (returnSource != null && returnClip != null)
             {
                 returnSource.PlayOneShot(returnClip, returnVolume);

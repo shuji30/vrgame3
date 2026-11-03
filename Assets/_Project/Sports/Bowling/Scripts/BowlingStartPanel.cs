@@ -2,8 +2,6 @@ using System.Collections;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
-using UnityEngine.XR.Interaction.Toolkit.Interactables;
-using VRGame3.Common;
 
 namespace VRGame3.Sports.Bowling
 {
@@ -126,18 +124,30 @@ namespace VRGame3.Sports.Bowling
             }
 
             panelRoot.SetActive(false);
-            SetBallsGrabbable(true);
+            if (game != null)
+            {
+                game.SetInputLocked(false);
+            }
         }
 
         /// <summary>パネルを出し、閉じるまでボールを掴めないようにする。</summary>
         public void Show()
         {
             panelRoot.SetActive(true);
-            SetBallsGrabbable(false);
+            if (game != null)
+            {
+                game.SetInputLocked(true);
+            }
         }
 
         private void OnGameFinished(int total)
         {
+            // 合計点を見せている間もボールは掴めないようにし、パネルの「はじめる」だけから次のゲームを始める
+            if (game != null)
+            {
+                game.SetInputLocked(true);
+            }
+
             StartCoroutine(ShowAfterDelay());
         }
 
@@ -175,22 +185,6 @@ namespace VRGame3.Sports.Bowling
             {
                 text.text = selected ? $"● {label}" : label;
                 text.color = selected ? selectedTextColor : unselectedTextColor;
-            }
-        }
-
-        private void SetBallsGrabbable(bool grabbable)
-        {
-            if (game == null)
-            {
-                return;
-            }
-
-            foreach (ThrowableObject ball in game.Balls)
-            {
-                if (ball != null && ball.TryGetComponent(out XRGrabInteractable grab))
-                {
-                    grab.enabled = grabbable;
-                }
             }
         }
     }

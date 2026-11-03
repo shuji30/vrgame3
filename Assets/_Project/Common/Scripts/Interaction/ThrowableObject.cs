@@ -200,6 +200,15 @@ namespace VRGame3.Common
                 return;
             }
 
+            // 掴むのを取り消されたとき(掴める状態が切られた・物が消えたなど)は、投げずにその場で放す
+            if (args.isCanceled)
+            {
+                isHeld = false;
+                hasPendingThrow = false;
+                waitingForFirstImpact = false;
+                return;
+            }
+
             isHeld = false;
             AddSample(Time.time, transform.position, transform.rotation);
             EstimateVelocity(out Vector3 velocity, out Vector3 angularVelocity);

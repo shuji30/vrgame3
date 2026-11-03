@@ -116,10 +116,12 @@ namespace VRGame3.Sports.Bowling
                 return "X";
             }
 
+            // 10フレーム目は3投分がマスに収まるよう、記号の間を詰める
+            string separator = frame == BowlingScoreSheet.FrameCount - 1 ? string.Empty : " ";
             string text = sheet.GetRollSymbol(frame, 0);
             for (int i = 1; i < count; i++)
             {
-                text += " " + sheet.GetRollSymbol(frame, i);
+                text += separator + sheet.GetRollSymbol(frame, i);
             }
 
             return text;

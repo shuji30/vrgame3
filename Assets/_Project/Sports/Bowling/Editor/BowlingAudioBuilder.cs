@@ -34,12 +34,17 @@ namespace VRGame3.Sports.Bowling.EditorTools
         {
             AudioSource source = AddSource(ball, 1f, 30f);
 
+            // 当たる音はピッチを毎回変えるので、掴む・離す音とは別の音源にする
+            var impactObject = new GameObject("当たる音");
+            impactObject.transform.SetParent(ball.transform, false);
+            AudioSource impactSource = AddSource(impactObject, 1f, 30f);
+
             var impact = ball.AddComponent<ImpactSound>();
             var impactSo = new SerializedObject(impact);
             SetClips(impactSo.FindProperty("clipsAgainstSounding"), Clips("SFX_PinHit_", 4));
             SetClips(impactSo.FindProperty("clipsAgainstOther"), new[] { Clip("SFX_BallDrop") });
             impactSo.FindProperty("volume").floatValue = PinVolume;
-            impactSo.FindProperty("source").objectReferenceValue = source;
+            impactSo.FindProperty("source").objectReferenceValue = impactSource;
             impactSo.ApplyModifiedPropertiesWithoutUndo();
 
             var loopObject = new GameObject("転がる音");
