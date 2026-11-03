@@ -126,6 +126,22 @@ namespace VRGame3.Sports.TableTennis
         [Tooltip("台の外に落ちる球のうち、縁からこの距離までを直す(m)")]
         [SerializeField] private float assistMargin = 0.3f;
 
+        [Header("やさしさ(試遊で「難しすぎる」と出たので足した。2026-11-04)")]
+        [Tooltip("補助オンのとき、打った球を向きに合わせて必ず相手コートへ届くように直す(オフなら惜しい球だけ直す)")]
+        [SerializeField] private bool strongAssist = true;
+
+        [Tooltip("強い補助で直すときの、返す球の水平の速さ(最小, 最大)(m/秒)")]
+        [SerializeField] private Vector2 assistedSpeed = new Vector2(4.5f, 9f);
+
+        [Tooltip("補助オンのときのラケットの当たりの半径(m)。見た目は 0.0775")]
+        [SerializeField] private float assistRacketRadius = 0.12f;
+
+        [Tooltip("補助オフのときのラケットの当たりの半径(m)")]
+        [SerializeField] private float normalRacketRadius = 0.085f;
+
+        [Tooltip("サーブで、トリガーを離したときに真上へ投げ上げる速さ(m/秒)。手の動きは使わない")]
+        [SerializeField] private float tossSpeed = 2.4f;
+
         private TableTennisMatch match = new TableTennisMatch();
         private RallyJudge judge;
         private State state = State.Waiting;
@@ -208,6 +224,8 @@ namespace VRGame3.Sports.TableTennis
 
         private void BeginMatch(int points, bool deuce, int level)
         {
+            // 補助オンのときは、ラケットの当たりを広くする
+            ball.Physics.racketRadius = SaveStore.Settings.hitAssist ? assistRacketRadius : normalRacketRadius;
             StopAllCoroutines();
             match = new TableTennisMatch(points, TTSide.Player, deuce);
             cpu.SetLevel(level);
@@ -404,7 +422,8 @@ namespace VRGame3.Sports.TableTennis
             }
             else if (ball.IsHeld && serveTrigger.WasReleasedThisFrame())
             {
-                ball.ReleaseFromHand();
+                // 手の動きに関係なく、まっすぐ上へ投げ上げる(サーブをやさしくする)
+                ball.Launch(ball.Position, Vector3.up * tossSpeed);
                 state = State.Rally;
                 TutorialBoard.Next(0);
             }
@@ -754,6 +773,12 @@ namespace VRGame3.Sports.TableTennis
 
             PingPongPhysics.Settings s = ball.Physics;
             PingPongPhysics.Table t = ball.Table;
+            if (strongAssist)
+            {
+                AssistStrong(s, t);
+                return;
+            }
+
             bool landed = PingPongPhysics.PredictLanding(ball.Position, ball.Velocity, s, t, out Vector3 landing, out _, out bool net);
             if (landed && !net && t.SideOf(landing) == TTSide.Cpu)
             {
@@ -791,6 +816,26 @@ namespace VRGame3.Sports.TableTennis
             float angle = Vector3.Angle(v, fixedVelocity);
             float speedChange = Mathf.Abs(fixedVelocity.magnitude / Mathf.Max(0.01f, v.magnitude) - 1f);
             if (angle <= assistMaxAngle && speedChange <= assistMaxSpeedChange)
+            {
+                ball.SetVelocity(fixedVelocity);
+            }
+        }
+
+        /// <summary>
+        /// 強い補助:打った球を、打った向き(左右)に合わせて相手コートの中ほどへ必ず届くように直す。
+        /// 速さは打った強さを目安に assistedSpeed の範囲に収める。初めての人でもラリーが続くようにするため。
+        /// </summary>
+        private void AssistStrong(PingPongPhysics.Settings s, PingPongPhysics.Table t)
+        {
+            Vector3 v = ball.Velocity;
+            float halfW = t.Width / 2f - 0.15f;
+            float far = t.Center.z + t.Length / 2f;
+            // 左右は打った向きから決め(少し真ん中へ寄せる)、奥行きは相手コートの中ほど
+            float x = t.Center.x + Mathf.Clamp(v.z > 0.5f ? v.x / v.z * (far - ball.Position.z) * 0.6f : 0f, -halfW, halfW);
+            float z = Mathf.Lerp(t.Center.z + 0.5f, far - 0.25f, Mathf.InverseLerp(assistedSpeed.x, assistedSpeed.y, v.magnitude));
+            var target = new Vector3(x, t.Top, z);
+            float speed = Mathf.Clamp(new Vector2(v.x, v.z).magnitude, assistedSpeed.x, assistedSpeed.y);
+            if (PingPongPhysics.SolveShot(ball.Position, target, speed, s, t, out Vector3 fixedVelocity))
             {
                 ball.SetVelocity(fixedVelocity);
             }

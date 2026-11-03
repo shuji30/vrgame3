@@ -44,8 +44,8 @@ namespace VRGame3.Sports.TableTennis
         [Tooltip("強さ3段階(やさしい / ふつう / つよい)")]
         [SerializeField] private TTCpuLevel[] levels =
         {
-            new TTCpuLevel { label = "やさしい", marks = "▲", color = new Color32(0x6C, 0xC3, 0x6A, 0xFF), reaction = 0.30f, moveSpeed = 1.5f, reach = 0.6f, returnSpeed = new Vector2(5f, 7f), scatter = 0.30f, missRate = 0.20f, fastMissBonus = 0.25f, serveSpeed = new Vector2(4f, 5f), aimStyle = 0 },
-            new TTCpuLevel { label = "ふつう", marks = "▲▲", color = new Color32(0x3A, 0xA7, 0xFF, 0xFF), reaction = 0.18f, moveSpeed = 2.5f, reach = 0.75f, returnSpeed = new Vector2(7f, 10f), scatter = 0.18f, missRate = 0.08f, fastMissBonus = 0.12f, serveSpeed = new Vector2(5f, 7f), aimStyle = 1 },
+            new TTCpuLevel { label = "やさしい", marks = "▲", color = new Color32(0x6C, 0xC3, 0x6A, 0xFF), reaction = 0.30f, moveSpeed = 2.0f, reach = 0.8f, returnSpeed = new Vector2(3.5f, 4.5f), scatter = 0.15f, missRate = 0.10f, fastMissBonus = 0.15f, serveSpeed = new Vector2(3.2f, 3.8f), aimStyle = 0 },
+            new TTCpuLevel { label = "ふつう", marks = "▲▲", color = new Color32(0x3A, 0xA7, 0xFF, 0xFF), reaction = 0.18f, moveSpeed = 2.5f, reach = 0.8f, returnSpeed = new Vector2(5f, 7.5f), scatter = 0.18f, missRate = 0.08f, fastMissBonus = 0.12f, serveSpeed = new Vector2(5f, 7f), aimStyle = 1 },
             new TTCpuLevel { label = "つよい", marks = "▲▲▲", color = new Color32(0xFF, 0x8A, 0x3D, 0xFF), reaction = 0.10f, moveSpeed = 3.5f, reach = 0.9f, returnSpeed = new Vector2(9f, 13f), scatter = 0.10f, missRate = 0.03f, fastMissBonus = 0.05f, serveSpeed = new Vector2(7f, 9f), aimStyle = 2 },
         };
 
