@@ -127,7 +127,7 @@ namespace VRGame3.Sports.TableTennis
         private InputAction serveTrigger;
         private Transform serveHand;
         private float pointTimer;
-        private bool rallyStarted;
+        private bool lastWasNet;
         private string challengeId;
         private int challengeCount;
         private int challengeTries;
@@ -163,6 +163,7 @@ namespace VRGame3.Sports.TableTennis
 
         private void OnDisable()
         {
+            TrackpadLocomotion.Suspended = false;
             ball.Bounced -= OnBallEvent;
             cpu.Hit -= OnCpuHit;
             SaveStore.Changed -= OnSettingsChanged;
@@ -181,7 +182,7 @@ namespace VRGame3.Sports.TableTennis
             ball.Hide();
             cpu.SetLevel(SaveStore.Settings.cpuLevel);
             ApplyTableHeight();
-            cpu.ResetStance();
+            cpu.ResetStance(true);
             scoreBoard.Refresh(match, $"{cpu.Level.label} {cpu.Level.marks}");
         }
 
@@ -205,7 +206,6 @@ namespace VRGame3.Sports.TableTennis
 
             ApplyTableHeight();
             EquipHands();
-            rallyStarted = false;
             GameSession.InProgress = false;
             RefreshBoard();
             NextServe();
@@ -276,6 +276,7 @@ namespace VRGame3.Sports.TableTennis
 
         private void NextServe()
         {
+            lastWasNet = false;
             ball.Hide();
             cpu.ResetStance();
             // ラリー10回はいつもプレイヤーのサーブ、ねらい打ちはいつも CPU の球出し
@@ -313,6 +314,10 @@ namespace VRGame3.Sports.TableTennis
 
         private void Update()
         {
+            // ラケットを振っている間に親指でトラックパッドを押して、回ったり移動したりしないようにする
+            TrackpadLocomotion.Suspended = state == State.PlayerServe || state == State.CpuServe || state == State.Rally ||
+                                           state == State.PointOver;
+
             if (serveGuide != null)
             {
                 bool show = state == State.PlayerServe && !ball.IsHeld && !InputGate.GrabBlocked;
@@ -398,13 +403,29 @@ namespace VRGame3.Sports.TableTennis
             }
 
             RallyJudge.Point? point = null;
+            if (e.Kind == PingPongPhysics.EventKind.Table && judge.LastHitter == null)
+            {
+                // 投げ上げた球を打たずに台に落とした:失点にせず、もう一度サーブ
+                StartCoroutine(ReserveLater());
+                state = State.PointOver;
+                pointTimer = float.MaxValue;
+                return;
+            }
+
+            if (e.Kind != PingPongPhysics.EventKind.Net && e.Kind != PingPongPhysics.EventKind.None)
+            {
+                lastWasNet = false;
+            }
+
             switch (e.Kind)
             {
+                case PingPongPhysics.EventKind.Net:
+                    lastWasNet = true;
+                    break;
                 case PingPongPhysics.EventKind.Racket:
                     point = judge.OnHit(TTSide.Player);
                     if (!point.HasValue)
                     {
-                        rallyStarted = true;
                         GameSession.InProgress = true;
                         ApplyAssist();
                         // ねらい打ちでは CPU は返さない(入ったかどうかだけを見る)
@@ -539,6 +560,11 @@ namespace VRGame3.Sports.TableTennis
         private void EndPoint(RallyJudge.Point point)
         {
             cpu.Cancel();
+            if (lastWasNet && point.Reason != "2バウンド")
+            {
+                point.Reason = "ネット";
+            }
+
             if (challengeId == "tabletennis.aim")
             {
                 // 入らなかった球
@@ -568,7 +594,7 @@ namespace VRGame3.Sports.TableTennis
             match.AddPoint(point.Winner);
             cpu.React(point.Winner == TTSide.Cpu);
             RefreshBoard();
-            scoreBoard.ShowReason(point.Winner == TTSide.Player ? $"とくてん  {point.Reason}" : $"しってん  {point.Reason}");
+            scoreBoard.ShowReason(point.Winner == TTSide.Player ? $"{point.Reason} → あなたの点" : $"{point.Reason} → CPU の点");
             PointScored?.Invoke(point.Winner, point.Reason);
             state = State.PointOver;
             pointTimer = pointPause;
@@ -610,7 +636,8 @@ namespace VRGame3.Sports.TableTennis
             GameFinished?.Invoke(won);
             if (resultPanel != null)
             {
-                resultPanel.Show(result);
+                // 勝敗と点数を見出しに出す(docs/art-direction.md 6.13)
+                resultPanel.Show(result, $"{(won ? "かち!" : "まけ")}  {match.PlayerPoints} ― {match.CpuPoints}");
             }
             else
             {
@@ -646,14 +673,18 @@ namespace VRGame3.Sports.TableTennis
                 return;
             }
 
-            // 台の高さを通る点(ネットに掛かる球はネットの先)を、相手コートの中へ寄せた点をねらう
+            if (net)
+            {
+                AssistOverNet(s, t);
+                return;
+            }
+
+            // 台の高さを通る点を、相手コートの中へ寄せた点をねらう
             Vector3 crossing = CrossTableHeight(ball.Position, ball.Velocity, s, t);
             float halfW = t.Width / 2f;
             float farEnd = t.Center.z + t.Length / 2f;
-            bool nearMiss = net
-                ? crossing.z < t.Center.z + 0.6f
-                : Mathf.Abs(crossing.x - t.Center.x) <= halfW + assistMargin && crossing.z <= farEnd + assistMargin &&
-                  crossing.z > t.Center.z;
+            bool nearMiss = Mathf.Abs(crossing.x - t.Center.x) <= halfW + assistMargin && crossing.z <= farEnd + assistMargin &&
+                            crossing.z > t.Center.z;
             if (!nearMiss)
             {
                 return;
@@ -676,6 +707,61 @@ namespace VRGame3.Sports.TableTennis
             {
                 ball.SetVelocity(fixedVelocity);
             }
+        }
+
+        /// <summary>
+        /// ネットを 0.1m 以内の差で越えられない球だけ、同じ向きのまま上向きの速さを上げて、ネットの上 0.05m を越えさせる。
+        /// </summary>
+        private void AssistOverNet(PingPongPhysics.Settings s, PingPongPhysics.Table t)
+        {
+            Vector3 v = ball.Velocity;
+            float netTop = t.Top + t.NetHeight + s.ballRadius;
+            float shortfall = netTop - HeightAtNet(ball.Position, v, s, t);
+            if (shortfall <= 0f || shortfall > 0.1f)
+            {
+                return;
+            }
+
+            for (float add = 0.1f; add <= 3f; add += 0.1f)
+            {
+                Vector3 candidate = v + Vector3.up * add;
+                if (Vector3.Angle(v, candidate) > assistMaxAngle ||
+                    Mathf.Abs(candidate.magnitude / Mathf.Max(0.01f, v.magnitude) - 1f) > assistMaxSpeedChange)
+                {
+                    return;
+                }
+
+                if (HeightAtNet(ball.Position, candidate, s, t) < netTop + 0.05f)
+                {
+                    continue;
+                }
+
+                bool landed = PingPongPhysics.PredictLanding(ball.Position, candidate, s, t, out Vector3 landing, out _, out bool net);
+                if (landed && !net && t.SideOf(landing) == TTSide.Cpu)
+                {
+                    ball.SetVelocity(candidate);
+                }
+
+                return;
+            }
+        }
+
+        /// <summary>球がネットの面(台の中心の Z)を通るときの高さ(重力と空気だけで求める)。</summary>
+        private static float HeightAtNet(Vector3 p, Vector3 v, PingPongPhysics.Settings s, PingPongPhysics.Table t)
+        {
+            float side = Mathf.Sign(p.z - t.Center.z);
+            for (float time = 0f; time < 2f; time += s.step)
+            {
+                v += Vector3.down * (s.gravity * s.step);
+                v -= v * (s.drag * v.magnitude * s.step);
+                p += v * s.step;
+                if (Mathf.Sign(p.z - t.Center.z) != side)
+                {
+                    return p.y;
+                }
+            }
+
+            return float.MinValue;
         }
 
         /// <summary>球が台の上面の高さまで落ちてくる点(台やネットは無いものとして重力と空気だけで求める)。</summary>

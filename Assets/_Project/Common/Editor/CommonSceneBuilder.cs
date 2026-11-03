@@ -338,7 +338,7 @@ namespace VRGame3.Common.EditorTools
             Transform c = canvas.transform;
             Color light = UIBuildUtility.TextLight;
 
-            UIBuildUtility.Label(c, "見出し", "けっか", font, 110, new Vector2(0f, 440f), new Vector2(1500f, 140f), light);
+            TMP_Text headline = UIBuildUtility.Label(c, "見出し", "けっか", font, 110, new Vector2(0f, 440f), new Vector2(1500f, 140f), light);
             TMP_Text total = UIBuildUtility.Label(c, "ごうけい", "ごうけい 0", font, 160, new Vector2(-150f, 280f),
                 new Vector2(1100f, 190f), light);
             (Image badge, _) = UIBuildUtility.Button(c, "ベスト更新", "ベスト更新!", font, 70, new Vector2(550f, 280f),
@@ -364,6 +364,7 @@ namespace VRGame3.Common.EditorTools
             var so = new SerializedObject(panel);
             so.FindProperty("panelRoot").objectReferenceValue = root;
             so.FindProperty("totalText").objectReferenceValue = total;
+            so.FindProperty("headlineText").objectReferenceValue = headline;
             so.FindProperty("newBestBadge").objectReferenceValue = badge.gameObject;
             so.FindProperty("bestText").objectReferenceValue = best;
             so.FindProperty("medal").objectReferenceValue = medal;

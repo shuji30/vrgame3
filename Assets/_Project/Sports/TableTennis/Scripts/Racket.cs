@@ -57,6 +57,9 @@ namespace VRGame3.Sports.TableTennis
             interactor = handInteractor;
             hasLast = false;
             samples = 0;
+            sampleIndex = 0;
+            System.Array.Clear(velocities, 0, velocities.Length);
+            System.Array.Clear(angularVelocities, 0, angularVelocities.Length);
             gameObject.SetActive(true);
         }
 

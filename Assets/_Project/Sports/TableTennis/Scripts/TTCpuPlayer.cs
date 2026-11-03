@@ -148,13 +148,16 @@ namespace VRGame3.Sports.TableTennis
             noMiss = value;
         }
 
-        /// <summary>構えの位置に戻す(1点の始め)。</summary>
-        public void ResetStance()
+        /// <summary>構えの位置(真ん中)へ戻り始める。snap なら瞬時に戻す(ゲームの始め)。</summary>
+        public void ResetStance(bool snap = false)
         {
             planned = false;
             serving = false;
             targetX = Table.Center.x;
-            body.position = new Vector3(targetX, baseY, StandZ);
+            if (snap)
+            {
+                body.position = new Vector3(targetX, baseY, StandZ);
+            }
         }
 
         /// <summary>予定していた返球をやめる(ラリーをやり直すとき)。</summary>
@@ -195,6 +198,15 @@ namespace VRGame3.Sports.TableTennis
                     break;
                 }
 
+                // 台の端の近く(端の 0.1m 手前より奥)で、台より 0.1m 以上高いところを打点にする
+                if (p.z >= endZ - 0.1f && p.y >= Table.Top + 0.1f)
+                {
+                    best = p;
+                    bestTime = t;
+                    bestY = float.MaxValue;
+                    break;
+                }
+
                 if (p.y > bestY)
                 {
                     bestY = p.y;
@@ -229,7 +241,7 @@ namespace VRGame3.Sports.TableTennis
         public void Serve(bool gentle = false)
         {
             gentleServe = gentle;
-            ResetStance();
+            ResetStance(true);
             Vector3 from = body.TransformPoint(tossRest);
             ball.Launch(from, new Vector3(0f, 2.6f, 0f));
             serving = true;
@@ -263,8 +275,8 @@ namespace VRGame3.Sports.TableTennis
                 }
             }
 
-            // 体を打点の方へ動かす(反応の時間がたってから)
-            if (planned && Time.time - planStart >= l.reaction)
+            // 体を打点の方へ動かす(反応の時間がたってから)。予定がなければ真ん中へ戻る
+            if (!planned || Time.time - planStart >= l.reaction)
             {
                 Vector3 p = body.position;
                 float x = Mathf.MoveTowards(p.x, targetX, l.moveSpeed * dt);

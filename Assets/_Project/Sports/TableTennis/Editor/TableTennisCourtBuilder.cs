@@ -309,7 +309,8 @@ namespace VRGame3.Sports.TableTennis.EditorTools
             var cpuRacket = new GameObject("CPU のラケット");
             cpuRacket.transform.SetParent(doll.RightHand, false);
             cpuRacket.transform.localScale = Vector3.one / 0.11f;
-            cpuRacket.transform.localRotation = Quaternion.Euler(-60f, 0f, 0f);
+            // 柄の軸のまわりに 90° 回してから傾け、面をプレイヤーの方へ向ける
+            cpuRacket.transform.localRotation = Quaternion.Euler(-60f, 0f, 0f) * Quaternion.Euler(0f, 0f, 90f);
             Renderer rubber = BuildRacketVisual(cpuRacket.transform, Mat("T_White", "#FFFDF7"));
 
             var cpu = cpuObject.AddComponent<TTCpuPlayer>();

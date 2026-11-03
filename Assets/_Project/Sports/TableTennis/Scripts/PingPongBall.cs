@@ -36,6 +36,8 @@ namespace VRGame3.Sports.TableTennis
         private float lastRacketHit = -10f;
         private Vector3 lastHeldPosition;
         private Vector3 heldVelocity;
+        private readonly System.Collections.Generic.List<PingPongPhysics.Event> events =
+            new System.Collections.Generic.List<PingPongPhysics.Event>();
 
         /// <summary>台・ネット・床・ラケットに当たったときに呼ばれる。</summary>
         public event Action<PingPongPhysics.Event> Bounced;
@@ -134,27 +136,31 @@ namespace VRGame3.Sports.TableTennis
             bool canHit = racket != null && racket.IsEquipped && Time.time - lastRacketHit >= rehitDelay;
             PingPongPhysics.RacketPose prev = canHit ? racket.Previous : default;
             PingPongPhysics.RacketPose now = canHit ? racket.Current : default;
-            PingPongPhysics.Event e = PingPongPhysics.Advance(ref position, ref velocity, dt, physics, Table, canHit, prev, now);
+            events.Clear();
+            PingPongPhysics.Advance(ref position, ref velocity, dt, physics, Table, canHit, prev, now, events);
             transform.position = position;
 
-            if (e.Kind == PingPongPhysics.EventKind.None)
+            // 1フレームに起きた出来事を順にすべて知らせる(弾んだ直後に打ったときも取りこぼさない)
+            foreach (PingPongPhysics.Event e in events)
             {
-                return;
-            }
+                if (e.Kind == PingPongPhysics.EventKind.Racket)
+                {
+                    lastRacketHit = Time.time;
+                    racket.Haptic(e.Speed);
+                }
 
-            if (e.Kind == PingPongPhysics.EventKind.Racket)
-            {
-                lastRacketHit = Time.time;
-                racket.Haptic(e.Speed);
-            }
+                if (e.Kind == PingPongPhysics.EventKind.Floor)
+                {
+                    // 床に落ちたら止める(拾わせない。進行役が消す)
+                    mode = Mode.Hidden;
+                }
 
-            if (e.Kind == PingPongPhysics.EventKind.Floor)
-            {
-                // 床に落ちたら止める(拾わせない。進行役が消す)
-                mode = Mode.Hidden;
+                Bounced?.Invoke(e);
+                if (mode != Mode.Flying)
+                {
+                    break;
+                }
             }
-
-            Bounced?.Invoke(e);
         }
     }
 }

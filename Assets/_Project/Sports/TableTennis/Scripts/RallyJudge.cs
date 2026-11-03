@@ -101,7 +101,7 @@ namespace VRGame3.Sports.TableTennis
 
             TTSide hitter = lastHitter.Value;
             return landedOnReceiver
-                ? new Point { Winner = hitter, Reason = "かえせなかった" }
+                ? new Point { Winner = hitter, Reason = "とれず" }
                 : new Point { Winner = hitter.Other(), Reason = "アウト" };
         }
 
@@ -113,7 +113,7 @@ namespace VRGame3.Sports.TableTennis
                 return null;
             }
 
-            return new Point { Winner = lastHitter.Value.Other(), Reason = "アウト" };
+            return new Point { Winner = lastHitter.Value.Other(), Reason = "ロスト" };
         }
     }
 }

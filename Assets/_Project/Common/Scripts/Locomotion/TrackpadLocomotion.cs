@@ -101,6 +101,15 @@ namespace VRGame3.Common
         [Tooltip("壁に近づける距離(体の半径、m)")]
         [SerializeField] private float bodyRadius = 0.2f;
 
+        /// <summary>オンの間はテレポート・スナップターン・連続移動を止める(卓球でラケットを振っている間など)。</summary>
+        public static bool Suspended { get; set; }
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetOnPlay()
+        {
+            Suspended = false;
+        }
+
         private InputAction trackpadPosition;
         private InputAction trackpadClick;
         private InputAction trackpadTouch;
@@ -168,6 +177,17 @@ namespace VRGame3.Common
         {
             if (xrOrigin == null)
             {
+                return;
+            }
+
+            if (Suspended)
+            {
+                if (mode == Mode.Teleport)
+                {
+                    mode = Mode.None;
+                    SetArcVisible(false);
+                }
+
                 return;
             }
 

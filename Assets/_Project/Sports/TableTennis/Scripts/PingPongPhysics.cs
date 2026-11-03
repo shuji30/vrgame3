@@ -51,6 +51,9 @@ namespace VRGame3.Sports.TableTennis
 
             [Tooltip("計算の刻み(秒)")]
             public float step = 1f / 240f;
+
+            [Tooltip("台で弾む縦の速さがこれより遅ければ、弾ませずに台の上を転がす(m/秒)")]
+            public float restSpeed = 0.3f;
         }
 
         /// <summary>台とネットの形。</summary>
@@ -124,6 +127,16 @@ namespace VRGame3.Sports.TableTennis
         public static Event Advance(ref Vector3 position, ref Vector3 velocity, float dt, Settings s, Table table,
             bool hasRacket, RacketPose racketPrev, RacketPose racketNow)
         {
+            return Advance(ref position, ref velocity, dt, s, table, hasRacket, racketPrev, racketNow, null);
+        }
+
+        /// <summary>
+        /// Advance と同じだが、この dt の中で起きた出来事をすべて events に足す(台で弾んだ直後に打つときなど、
+        /// 1フレームに2つ起きても取りこぼさないため)。戻り値は最初の出来事。
+        /// </summary>
+        public static Event Advance(ref Vector3 position, ref Vector3 velocity, float dt, Settings s, Table table,
+            bool hasRacket, RacketPose racketPrev, RacketPose racketNow, System.Collections.Generic.List<Event> events)
+        {
             var first = new Event { Kind = EventKind.None };
             int steps = Mathf.Max(1, Mathf.CeilToInt(dt / Mathf.Max(0.0005f, s.step)));
             float h = dt / steps;
@@ -133,9 +146,13 @@ namespace VRGame3.Sports.TableTennis
                 float t1 = (float)(i + 1) / steps;
                 Event e = Step(ref position, ref velocity, h, s, table, hasRacket,
                     Lerp(racketPrev, racketNow, t0), Lerp(racketPrev, racketNow, t1));
-                if (e.Kind != EventKind.None && first.Kind == EventKind.None)
+                if (e.Kind != EventKind.None)
                 {
-                    first = e;
+                    events?.Add(e);
+                    if (first.Kind == EventKind.None)
+                    {
+                        first = e;
+                    }
                 }
 
                 if (e.Kind == EventKind.Floor)
@@ -230,6 +247,13 @@ namespace VRGame3.Sports.TableTennis
             {
                 float speed = v.magnitude;
                 p = new Vector3(p.x, table.Top + s.ballRadius, p.z);
+                if (-v.y * s.tableBounce < s.restSpeed)
+                {
+                    // 止まりかけ:弾ませずに台の上を転がす(出来事は出さない。音が鳴り続けないように)
+                    v = new Vector3(v.x * (1f - 2f * h), 0f, v.z * (1f - 2f * h));
+                    return new Event { Kind = EventKind.None };
+                }
+
                 v = new Vector3(v.x * s.tableFriction, -v.y * s.tableBounce, v.z * s.tableFriction);
                 return new Event { Kind = EventKind.Table, Point = p, Side = table.SideOf(p), Speed = speed };
             }

@@ -17,6 +17,9 @@ namespace VRGame3.Common
         [Tooltip("合計の文字")]
         [SerializeField] private TMP_Text totalText;
 
+        [Tooltip("見出し(「けっか」。勝敗のある種目では「かち! 11 ― 7」にする)")]
+        [SerializeField] private TMP_Text headlineText;
+
         [Tooltip("「ベスト更新!」の札")]
         [SerializeField] private GameObject newBestBadge;
 
@@ -84,6 +87,17 @@ namespace VRGame3.Common
         /// <summary>結果を出す。</summary>
         public void Show(GameRecordResult result)
         {
+            Show(result, "けっか");
+        }
+
+        /// <summary>見出しを決めて結果を出す。</summary>
+        public void Show(GameRecordResult result, string headline)
+        {
+            if (headlineText != null)
+            {
+                headlineText.text = headline;
+            }
+
             shown = true;
             panelRoot.SetActive(!InputGate.GrabBlocked);
             if (newBestBadge != null)
