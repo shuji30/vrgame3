@@ -85,6 +85,7 @@ namespace VRGame3.Common.EditorTools
                 ballObject.AddComponent<XRGrabInteractable>();
                 ballObject.GetComponent<Rigidbody>().mass = 2f;
                 throwables.Add(ballObject.AddComponent<ThrowableObject>());
+                ballObject.AddComponent<ReturnToHome>();
             }
 
             var test = targetObject.AddComponent<ThrowAccuracyTest>();

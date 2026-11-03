@@ -151,6 +151,16 @@ namespace VRGame3.Common
             Released?.Invoke(this, transform.position);
         }
 
+        /// <summary>
+        /// 投げた途中の状態を取り消す。元の位置に戻すときなどに呼び、
+        /// まだ速度を入れていない投げと、最初に当たったときの通知を止める。
+        /// </summary>
+        public void CancelThrow()
+        {
+            hasPendingThrow = false;
+            waitingForFirstImpact = false;
+        }
+
         private void AddSample(float time, Vector3 position, Quaternion rotation)
         {
             sampleTimes[sampleHead] = time;
