@@ -4,9 +4,9 @@
 
 ## 開発環境
 
-- ゲームエンジン: Unity(バージョンは各自記入)
-- 対象デバイス: (例: Meta Quest 3)
-- XR: (例: OpenXR / XR Interaction Toolkit)
+- ゲームエンジン: Unity 6(6000.6.5f1)、描画は URP
+- 対象デバイス: Pimax 8KX / Pimax シリーズ(SteamVR 経由)、HTC Vive コントローラー
+- XR: OpenXR(SteamVR ランタイム)/ XR Interaction Toolkit 3.6.1
 
 ## セットアップ
 
@@ -15,6 +15,8 @@
    git clone https://github.com/shuji30/vrgame3.git
    ```
 2. Unity Hub の「追加」からこのフォルダを開く
+
+企画書は `docs/plan.md` を参照。
 
 ## メモ
 
