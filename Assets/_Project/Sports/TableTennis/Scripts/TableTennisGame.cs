@@ -44,6 +44,15 @@ namespace VRGame3.Sports.TableTennis
         [Tooltip("台の見た目と当たりの親(身長に合わせて高さを変える)。この物の位置が台の上面の中心")]
         [SerializeField] private Transform table;
 
+        [Tooltip("台の脚(床から天板の下まで伸ばす)")]
+        [SerializeField] private Transform[] tableLegs = new Transform[0];
+
+        [Tooltip("脚の横木(床から 0.15m)")]
+        [SerializeField] private Transform[] tableCrossbars = new Transform[0];
+
+        [Tooltip("サーブの案内(プレイヤーのサーブでボールを出す前だけ出す)")]
+        [SerializeField] private GameObject serveGuide;
+
         [Header("手")]
         [Tooltip("左のコントローラー")]
         [SerializeField] private Transform leftController;
@@ -143,9 +152,10 @@ namespace VRGame3.Sports.TableTennis
         {
             racket.Unequip();
             ball.Hide();
+            cpu.SetLevel(SaveStore.Settings.cpuLevel);
             ApplyTableHeight();
             cpu.ResetStance();
-            scoreBoard.Refresh(match, cpu.Level.label);
+            scoreBoard.Refresh(match, $"{cpu.Level.label} {cpu.Level.marks}");
         }
 
         /// <summary>新しいゲームを始める(「はじめに」パネルの「はじめる」から呼ぶ)。</summary>
@@ -158,7 +168,7 @@ namespace VRGame3.Sports.TableTennis
             EquipHands();
             rallyStarted = false;
             GameSession.InProgress = false;
-            scoreBoard.Refresh(match, cpu.Level.label);
+            scoreBoard.Refresh(match, $"{cpu.Level.label} {cpu.Level.marks}");
             NextServe();
         }
 
@@ -187,7 +197,7 @@ namespace VRGame3.Sports.TableTennis
             ball.Hide();
             cpu.ResetStance();
             judge = new RallyJudge(match.Server);
-            scoreBoard.Refresh(match, cpu.Level.label);
+            scoreBoard.Refresh(match, $"{cpu.Level.label} {cpu.Level.marks}");
             if (match.Server == TTSide.Player)
             {
                 state = State.PlayerServe;
@@ -216,6 +226,15 @@ namespace VRGame3.Sports.TableTennis
 
         private void Update()
         {
+            if (serveGuide != null)
+            {
+                bool show = state == State.PlayerServe && !ball.IsHeld && !InputGate.GrabBlocked;
+                if (serveGuide.activeSelf != show)
+                {
+                    serveGuide.SetActive(show);
+                }
+            }
+
             switch (state)
             {
                 case State.PlayerServe:
@@ -354,7 +373,7 @@ namespace VRGame3.Sports.TableTennis
             cpu.Cancel();
             match.AddPoint(point.Winner);
             cpu.React(point.Winner == TTSide.Cpu);
-            scoreBoard.Refresh(match, cpu.Level.label);
+            scoreBoard.Refresh(match, $"{cpu.Level.label} {cpu.Level.marks}");
             scoreBoard.ShowReason(point.Winner == TTSide.Player ? $"とくてん  {point.Reason}" : $"しってん  {point.Reason}");
             PointScored?.Invoke(point.Winner, point.Reason);
             state = State.PointOver;
@@ -481,6 +500,24 @@ namespace VRGame3.Sports.TableTennis
             Vector3 p = table.position;
             table.position = new Vector3(p.x, height, p.z);
             ball.Table = PingPongPhysics.Table.Standard(table.position);
+
+            // 脚は床から天板の下(上面から 0.03 下)まで、横木は床から 0.15m
+            foreach (Transform leg in tableLegs)
+            {
+                if (leg != null)
+                {
+                    leg.localScale = new Vector3(leg.localScale.x, height - 0.03f, leg.localScale.z);
+                    leg.localPosition = new Vector3(leg.localPosition.x, (-height - 0.03f) / 2f, leg.localPosition.z);
+                }
+            }
+
+            foreach (Transform bar in tableCrossbars)
+            {
+                if (bar != null)
+                {
+                    bar.localPosition = new Vector3(bar.localPosition.x, 0.15f - height, bar.localPosition.z);
+                }
+            }
         }
 
         private void OnSettingsChanged()
@@ -489,7 +526,7 @@ namespace VRGame3.Sports.TableTennis
             {
                 ApplyTableHeight();
                 cpu.SetLevel(SaveStore.Settings.cpuLevel);
-                scoreBoard.Refresh(match, cpu.Level.label);
+                scoreBoard.Refresh(match, $"{cpu.Level.label} {cpu.Level.marks}");
             }
         }
     }

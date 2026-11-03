@@ -83,6 +83,9 @@ namespace VRGame3.Hub.EditorTools
             UIBuildUtility.EnsureEventSystem();
             BuildSportSign(root.transform, font, "ボウリングの看板", "ボウリング", SportIds.Bowling, "Bowling",
                 new Vector3(-SignX, 1.65f, 5f), "#FF7F6B");
+            // 卓球の看板は真ん中(docs/art-direction.md「M3 ハブの3枚目の看板」)
+            BuildSportSign(root.transform, font, "卓球の看板", "卓球", SportIds.TableTennis, "TableTennis",
+                new Vector3(0f, 1.65f, 5.6f), "#3AA7FF");
             BuildSportSign(root.transform, font, "アーチェリーの看板", "アーチェリー", SportIds.Archery, "Archery",
                 new Vector3(SignX, 1.65f, 5f), "#6CC36A");
 
@@ -94,6 +97,7 @@ namespace VRGame3.Hub.EditorTools
             // 会場から戻ってきたときは、その会場の看板の前に出す
             AddArrivalPoint(root.transform, "ボウリングから戻ったとき", "Bowling", new Vector3(-SignX, 0f, 2.2f));
             AddArrivalPoint(root.transform, "アーチェリーから戻ったとき", "Archery", new Vector3(SignX, 0f, 2.2f));
+            AddArrivalPoint(root.transform, "卓球から戻ったとき", "TableTennis", new Vector3(0f, 0f, 2.6f));
 
             AddWarning(warnings, CommonSceneBuilder.AddFader());
             AddWarning(warnings, CommonSceneBuilder.AddMenuAndSettings(root.transform, true, out SettingsPanel settings));
@@ -149,7 +153,7 @@ namespace VRGame3.Hub.EditorTools
             {
                 float angle = i * 30f * Mathf.Deg2Rad;
                 Vector3 position = new Vector3(Mathf.Sin(angle), 0f, Mathf.Cos(angle)) * (PlazaRadius + 0.3f);
-                if (position.z > 0f && Mathf.Abs(Mathf.Abs(position.x) - SignX) < 1.6f)
+                if (position.z > 0f && (Mathf.Abs(Mathf.Abs(position.x) - SignX) < 1.6f || Mathf.Abs(position.x) < 1.6f))
                 {
                     continue;
                 }
@@ -298,6 +302,18 @@ namespace VRGame3.Hub.EditorTools
                 Shape(parent, $"門の布({label})", PrimitiveType.Cube, new Vector3(x, 2.35f, 9.8f),
                     new Vector3(1.6f, 0.3f, 0.03f), side < 0 ? Mat("H_Coral", "#FF7F6B") : Mat("H_Leaf", "#6CC36A"), false);
             }
+
+            // 卓球(真ん中):道は短く Z 9.5〜12.5
+            Shape(parent, "道(卓球)", PrimitiveType.Cube, new Vector3(0f, -0.055f, 11f), new Vector3(1.6f, 0.05f, 3f), path, false);
+            for (int post = -1; post <= 1; post += 2)
+            {
+                Shape(parent, "門の柱(卓球)", PrimitiveType.Cylinder, new Vector3(post * 0.9f, 1.3f, 9.8f),
+                    new Vector3(0.15f, 1.3f, 0.15f), wood, false);
+            }
+
+            Shape(parent, "門の横木(卓球)", PrimitiveType.Cube, new Vector3(0f, 2.6f, 9.8f), new Vector3(2f, 0.15f, 0.15f), wood, false);
+            Shape(parent, "門の布(卓球)", PrimitiveType.Cube, new Vector3(0f, 2.35f, 9.8f), new Vector3(1.6f, 0.3f, 0.03f),
+                Mat("H_Blue", "#3AA7FF"), false);
         }
 
         /// <summary>道の先の会場の遠景(ボウリング小屋、アーチェリー場の木と的)。</summary>
@@ -333,6 +349,19 @@ namespace VRGame3.Hub.EditorTools
                     new Vector3(3.5f, 3f, 3.5f), i % 2 == 0 ? Mat("H_LeafDark", "#2F8A5B") : Mat("H_Leaf", "#6CC36A"), false);
             }
 
+            // 卓球場の遠景:小さな卓球台とヤシ2本
+            Shape(parent, "卓球台の遠景", PrimitiveType.Cube, new Vector3(0f, 0.76f, 14f), new Vector3(1.525f, 0.05f, 2.74f),
+                Mat("H_TableTop", "#1A7A8C"), false);
+            Shape(parent, "卓球台のネットの遠景", PrimitiveType.Cube, new Vector3(0f, 0.86f, 14f), new Vector3(1.83f, 0.15f, 0.02f),
+                Mat("H_White", "#FFFDF7"), false);
+            foreach (Vector3 palm in new[] { new Vector3(-1.8f, 0f, 14.6f), new Vector3(1.8f, 0f, 14.4f) })
+            {
+                Shape(parent, "卓球場のヤシの幹", PrimitiveType.Cylinder, palm + new Vector3(0f, 2f, 0f), new Vector3(0.25f, 2f, 0.25f),
+                    Mat("H_Trunk", "#C98B55"), false);
+                Shape(parent, "卓球場のヤシの葉", PrimitiveType.Sphere, palm + new Vector3(0f, 4.1f, 0f), new Vector3(2.6f, 0.5f, 2.6f),
+                    Mat("H_Leaf", "#6CC36A"), false);
+            }
+
             Shape(parent, "的の台", PrimitiveType.Cube, range + new Vector3(0f, 0.9f, 1f), new Vector3(0.8f, 0.8f, 0.2f),
                 Mat("H_Sand", "#F2D49B"), false);
             GameObject bull = Shape(parent, "的の中心", PrimitiveType.Cylinder, range + new Vector3(0f, 0.9f, 0.88f),
@@ -362,7 +391,7 @@ namespace VRGame3.Hub.EditorTools
 
             LocalShape(sign.transform, "板", PrimitiveType.Cube, Vector3.zero, new Vector3(2.3f, 1.8f, 0.08f), wood);
             LocalShape(sign.transform, "帯", PrimitiveType.Cube, new Vector3(0f, 0.9f, 0f), new Vector3(2.3f, 0.15f, 0.09f),
-                Mat(bandHex == "#FF7F6B" ? "H_Coral" : "H_Leaf", bandHex));
+                Mat(BandMaterialName(bandHex), bandHex));
 
             GameObject canvas = UIBuildUtility.CreateCanvas(sign.transform, "文字", new Vector2(2200f, 1700f),
                 UIBuildUtility.Background);
@@ -393,14 +422,22 @@ namespace VRGame3.Hub.EditorTools
             so.ApplyModifiedPropertiesWithoutUndo();
         }
 
+        private static string BandMaterialName(string hex)
+        {
+            return hex == "#FF7F6B" ? "H_Coral" : hex == "#3AA7FF" ? "H_Blue" : "H_Leaf";
+        }
+
         /// <summary>「せってい」看板。押すと共通の設定パネルを頭の前に出す。</summary>
         private static void BuildSettingsSign(Transform root, TMP_FontAsset font, SettingsPanel settings)
         {
-            Vector3 center = new Vector3(0f, 1.2f, 6f);
+            // 卓球の看板を真ん中に置いたので、左手前へ移す(docs/art-direction.md「M3 ハブの3枚目の看板」)
+            Vector3 center = new Vector3(-4.4f, 1.2f, 2f);
             var sign = new GameObject("せってい看板");
             sign.transform.SetParent(root, false);
             sign.transform.position = center;
-            sign.transform.rotation = Quaternion.LookRotation(Vector3.forward, Vector3.up);
+            Vector3 away = center - Eye;
+            away.y = 0f;
+            sign.transform.rotation = Quaternion.LookRotation(away.normalized, Vector3.up);
 
             LocalShape(sign.transform, "柱", PrimitiveType.Cylinder, new Vector3(0f, -center.y + 0.75f, 0.05f),
                 new Vector3(0.1f, 0.75f, 0.1f), Mat("H_WoodDark", "#8A5A3B"));

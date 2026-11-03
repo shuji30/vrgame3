@@ -10,6 +10,12 @@ namespace VRGame3.Sports.TableTennis
         [Tooltip("強さの名前(スコア板に出す)")]
         public string label = "ふつう";
 
+        [Tooltip("強さの印(▲ の数)")]
+        public string marks = "▲▲";
+
+        [Tooltip("強さの色(名札・敷物・ラケットのラバー。docs/art-direction.md 6.12)")]
+        public Color color = new Color32(0x3A, 0xA7, 0xFF, 0xFF);
+
         [Tooltip("プレイヤーが打ってから動き始めるまでの秒数")]
         public float reaction = 0.18f;
 

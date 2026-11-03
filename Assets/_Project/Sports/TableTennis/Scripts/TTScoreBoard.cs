@@ -65,7 +65,7 @@ namespace VRGame3.Sports.TableTennis
 
             if (levelText != null)
             {
-                levelText.text = $"CPU:{levelLabel}";
+                levelText.text = $"CPU  {levelLabel}";
             }
         }
 

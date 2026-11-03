@@ -1,5 +1,7 @@
 using System;
+using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 using Random = UnityEngine.Random;
 
 namespace VRGame3.Sports.TableTennis
@@ -33,18 +35,34 @@ namespace VRGame3.Sports.TableTennis
         [SerializeField] private Transform tossHand;
 
         [Tooltip("体から見た、構えているときのラケットの手の位置(m)")]
-        [SerializeField] private Vector3 handRest = new Vector3(0.3f, 1.0f, -0.35f);
+        [SerializeField] private Vector3 handRest = new Vector3(0.3f, 1.0f, 0.25f);
 
         [Tooltip("体から見た、構えているときの投げ上げる手の位置(m)")]
-        [SerializeField] private Vector3 tossRest = new Vector3(-0.3f, 0.95f, -0.3f);
+        [SerializeField] private Vector3 tossRest = new Vector3(-0.3f, 0.95f, 0.25f);
 
         [Tooltip("強さ3段階(やさしい / ふつう / つよい)")]
         [SerializeField] private TTCpuLevel[] levels =
         {
-            new TTCpuLevel { label = "やさしい", reaction = 0.30f, moveSpeed = 1.5f, reach = 0.6f, returnSpeed = new Vector2(5f, 7f), scatter = 0.30f, missRate = 0.20f, fastMissBonus = 0.25f, serveSpeed = new Vector2(4f, 5f), aimStyle = 0 },
-            new TTCpuLevel { label = "ふつう", reaction = 0.18f, moveSpeed = 2.5f, reach = 0.75f, returnSpeed = new Vector2(7f, 10f), scatter = 0.18f, missRate = 0.08f, fastMissBonus = 0.12f, serveSpeed = new Vector2(5f, 7f), aimStyle = 1 },
-            new TTCpuLevel { label = "つよい", reaction = 0.10f, moveSpeed = 3.5f, reach = 0.9f, returnSpeed = new Vector2(9f, 13f), scatter = 0.10f, missRate = 0.03f, fastMissBonus = 0.05f, serveSpeed = new Vector2(7f, 9f), aimStyle = 2 },
+            new TTCpuLevel { label = "やさしい", marks = "▲", color = new Color32(0x6C, 0xC3, 0x6A, 0xFF), reaction = 0.30f, moveSpeed = 1.5f, reach = 0.6f, returnSpeed = new Vector2(5f, 7f), scatter = 0.30f, missRate = 0.20f, fastMissBonus = 0.25f, serveSpeed = new Vector2(4f, 5f), aimStyle = 0 },
+            new TTCpuLevel { label = "ふつう", marks = "▲▲", color = new Color32(0x3A, 0xA7, 0xFF, 0xFF), reaction = 0.18f, moveSpeed = 2.5f, reach = 0.75f, returnSpeed = new Vector2(7f, 10f), scatter = 0.18f, missRate = 0.08f, fastMissBonus = 0.12f, serveSpeed = new Vector2(5f, 7f), aimStyle = 1 },
+            new TTCpuLevel { label = "つよい", marks = "▲▲▲", color = new Color32(0xFF, 0x8A, 0x3D, 0xFF), reaction = 0.10f, moveSpeed = 3.5f, reach = 0.9f, returnSpeed = new Vector2(9f, 13f), scatter = 0.10f, missRate = 0.03f, fastMissBonus = 0.05f, serveSpeed = new Vector2(7f, 9f), aimStyle = 2 },
         };
+
+        [Header("見た目(強さの色と表情)")]
+        [Tooltip("強さの色に塗る物(足元の敷物・ラケットのラバー)")]
+        [SerializeField] private Renderer[] levelColorRenderers = new Renderer[0];
+
+        [Tooltip("名札の背景(強さの色)")]
+        [SerializeField] private Image nameTagBack;
+
+        [Tooltip("名札の文字(「ふつう ▲▲」)")]
+        [SerializeField] private TMP_Text nameTagText;
+
+        [Tooltip("頭(失点でうつむく)")]
+        [SerializeField] private Transform head;
+
+        [Tooltip("目(得点で細める)")]
+        [SerializeField] private Transform[] eyes = new Transform[0];
 
         [Tooltip("振りはじめから打つまでの秒数")]
         [SerializeField] private float swingTime = 0.25f;
@@ -68,6 +86,16 @@ namespace VRGame3.Sports.TableTennis
         private void Awake()
         {
             baseY = body != null ? body.position.y : 0f;
+            eyeScales = new Vector3[eyes.Length];
+            for (int i = 0; i < eyes.Length; i++)
+            {
+                eyeScales[i] = eyes[i] != null ? eyes[i].localScale : Vector3.one;
+            }
+
+            if (head != null)
+            {
+                headRest = head.localRotation;
+            }
         }
 
         /// <summary>CPU がボールを打ったときに呼ばれる。</summary>
@@ -79,7 +107,34 @@ namespace VRGame3.Sports.TableTennis
         public void SetLevel(int value)
         {
             level = Mathf.Clamp(value, 0, levels.Length - 1);
+            TTCpuLevel l = Level;
+            var block = new MaterialPropertyBlock();
+            foreach (Renderer r in levelColorRenderers)
+            {
+                if (r == null)
+                {
+                    continue;
+                }
+
+                r.GetPropertyBlock(block);
+                block.SetColor(BaseColorId, l.color);
+                r.SetPropertyBlock(block);
+            }
+
+            if (nameTagBack != null)
+            {
+                nameTagBack.color = l.color;
+            }
+
+            if (nameTagText != null)
+            {
+                nameTagText.text = $"{l.label} {l.marks}";
+            }
         }
+
+        private static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
+        private Vector3[] eyeScales = new Vector3[0];
+        private Quaternion headRest;
 
         private PingPongPhysics.Table Table => ball.Table;
 
@@ -329,9 +384,23 @@ namespace VRGame3.Sports.TableTennis
             reactTimer -= dt;
             float k = Mathf.Sin(Mathf.Clamp01(1f - reactTimer / 0.6f) * Mathf.PI);
             Vector3 p = body.position;
-            // 得点は 0.12m 跳ね、失点は 0.05m 沈む
+            // 得点は 0.12m 跳ねて目を細め、失点は少し沈んで頭を前へ 20° 傾ける(docs/art-direction.md の反応)
             float y = reactJump > 0f ? k * 0.12f : -k * 0.05f;
             body.position = new Vector3(p.x, baseY + y, p.z);
+            bool done = reactTimer <= 0f;
+            for (int i = 0; i < eyes.Length; i++)
+            {
+                if (eyes[i] != null)
+                {
+                    Vector3 rest = eyeScales[i];
+                    eyes[i].localScale = reactJump > 0f && !done ? new Vector3(rest.x, rest.y * 0.3f, rest.z) : rest;
+                }
+            }
+
+            if (head != null)
+            {
+                head.localRotation = reactJump < 0f && !done ? headRest * Quaternion.Euler(20f * k, 0f, 0f) : headRest;
+            }
         }
 
     }
