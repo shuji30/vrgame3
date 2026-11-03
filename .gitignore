@@ -60,3 +60,7 @@ crashlytics-build.properties
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# ユーザーが用意したモデル(girl.vrm。作者本人のみ利用可・改変禁止のため、リポジトリに入れない)
+Assets/ThirdParty/UserModels/
+Assets/ThirdParty/UserModels.meta
