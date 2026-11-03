@@ -72,6 +72,12 @@ namespace VRGame3.Common
             leftHand = animator.GetBoneTransform(HumanBodyBones.LeftHand);
             head = animator.GetBoneTransform(HumanBodyBones.Head);
 
+            // 表情(ふだんの笑顔・まばたき・得点と失点の顔)
+            if (GetComponent<HumanoidFace>() == null)
+            {
+                gameObject.AddComponent<HumanoidFace>();
+            }
+
             // 脚(左右の大腿・下腿)の、体から見た休み姿勢を覚える
             body = transform.parent != null ? transform.parent : transform;
             lastBodyPosition = body.position;

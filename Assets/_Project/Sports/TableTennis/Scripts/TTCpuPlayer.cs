@@ -1,6 +1,7 @@
 using System;
 using TMPro;
 using UnityEngine;
+using VRGame3.Common;
 using UnityEngine.UI;
 using Random = UnityEngine.Random;
 
@@ -254,6 +255,13 @@ namespace VRGame3.Sports.TableTennis
         /// <summary>得点・失点の反応(得点なら小さく跳ね、失点なら少しうなだれる)。</summary>
         public void React(bool won)
         {
+            // 人型のモデルに差し替えているときは、顔でも反応する
+            HumanoidFace face = body.GetComponentInChildren<HumanoidFace>();
+            if (face != null)
+            {
+                face.Show(won ? HumanoidFace.Mood.Happy : HumanoidFace.Mood.Sad);
+            }
+
             reactTimer = 0.6f;
             reactJump = won ? 1f : -1f;
         }

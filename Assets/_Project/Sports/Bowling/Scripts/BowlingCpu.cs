@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using UnityEngine;
+using VRGame3.Common;
 using Random = UnityEngine.Random;
 
 namespace VRGame3.Sports.Bowling
@@ -197,6 +198,12 @@ namespace VRGame3.Sports.Bowling
                 string symbol = sheet.GetRollSymbol(frame, rollIndex);
                 scoreBoard.Refresh(sheet);
                 RollRecorded?.Invoke(knocked, symbol);
+                HumanoidFace face = body.GetComponentInChildren<HumanoidFace>();
+                if (face != null)
+                {
+                    face.Show(symbol == "X" || symbol == "/" ? HumanoidFace.Mood.Happy : knocked == 0 ? HumanoidFace.Mood.Sad : HumanoidFace.Mood.Calm);
+                }
+
                 if (symbol == "X" || symbol == "/")
                 {
                     // 小さく祝う:その場で2回跳ねる(docs/art-direction.md 7.6)
