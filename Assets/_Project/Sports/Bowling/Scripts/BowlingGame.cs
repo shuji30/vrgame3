@@ -399,6 +399,12 @@ namespace VRGame3.Sports.Bowling
 
             RollRecorded?.Invoke(frame, rollIndex, knocked, symbol);
 
+            // フレームの終わりは休憩案内を出してよい区切り
+            if (sheet.CurrentFrame != frame || sheet.IsGameOver)
+            {
+                RestReminder.AtBreak();
+            }
+
             clearTimer = symbol == "X" ? strikeClearDelay : clearDelay;
             state = State.Clearing;
         }

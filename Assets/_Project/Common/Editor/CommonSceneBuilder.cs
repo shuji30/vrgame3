@@ -55,8 +55,13 @@ namespace VRGame3.Common.EditorTools
             renderer.enabled = false;
 
             var fader = sphere.AddComponent<ScreenFader>();
+            var audio = sphere.AddComponent<AudioSource>();
+            audio.playOnAwake = false;
+            audio.spatialBlend = 0f;
             var so = new SerializedObject(fader);
             so.FindProperty("sphere").objectReferenceValue = renderer;
+            so.FindProperty("audioSource").objectReferenceValue = audio;
+            so.FindProperty("fadeOutClip").objectReferenceValue = PlaceholderClip("SFX_SceneTransition");
             so.ApplyModifiedPropertiesWithoutUndo();
             return null;
         }
@@ -79,7 +84,42 @@ namespace VRGame3.Common.EditorTools
 
             settingsPanel = BuildSettingsPanel(root.transform, font);
             BuildMenu(root.transform, font, inHub, settingsPanel);
+            BuildRestReminder(root.transform, font, inHub);
             return null;
+        }
+
+        /// <summary>休憩案内パネル(6.7)。ハブではいつでも区切りとみなす。</summary>
+        private static void BuildRestReminder(Transform parent, TMP_FontAsset font, bool inHub)
+        {
+            var holder = new GameObject("休憩案内");
+            holder.transform.SetParent(parent, false);
+            var reminder = holder.AddComponent<RestReminder>();
+
+            GameObject canvas = UIBuildUtility.CreateCanvas(holder.transform, "休憩案内のパネル", new Vector2(760f, 420f),
+                UIBuildUtility.Background);
+            canvas.transform.position = new Vector3(0f, 1.45f, 1.2f);
+            Transform c = canvas.transform;
+            TMP_Text message = UIBuildUtility.Label(c, "文1", "20分あそびました。", font, 44, new Vector2(0f, 120f),
+                new Vector2(720f, 60f), UIBuildUtility.TextLight);
+            UIBuildUtility.Label(c, "文2", "ひと休みしませんか?", font, 44, new Vector2(0f, 60f), new Vector2(720f, 60f),
+                UIBuildUtility.TextLight);
+            UIBuildUtility.NormalButton(c, "今後は出さない", "今後は出さない", font, 34, new Vector2(-180f, -110f),
+                new Vector2(320f, 96f), reminder.NeverShow);
+            UIBuildUtility.PrimaryButton(c, "とじる", "とじる", font, 44, new Vector2(180f, -110f), new Vector2(320f, 96f),
+                reminder.Close);
+
+            var audio = holder.AddComponent<AudioSource>();
+            audio.playOnAwake = false;
+            audio.spatialBlend = 0f;
+
+            var so = new SerializedObject(reminder);
+            so.FindProperty("panelRoot").objectReferenceValue = canvas;
+            so.FindProperty("messageText").objectReferenceValue = message;
+            so.FindProperty("alwaysAtBreak").boolValue = inHub;
+            so.FindProperty("source").objectReferenceValue = audio;
+            so.FindProperty("noticeClip").objectReferenceValue = PlaceholderClip("SFX_BreakNotice");
+            so.ApplyModifiedPropertiesWithoutUndo();
+            canvas.SetActive(false);
         }
 
         private static void BuildMenu(Transform parent, TMP_FontAsset font, bool inHub, SettingsPanel settingsPanel)
@@ -143,7 +183,7 @@ namespace VRGame3.Common.EditorTools
             holder.transform.SetParent(parent, false);
             var panel = holder.AddComponent<SettingsPanel>();
 
-            // 6.6。連続移動・移動の速さ・休憩案内の行は M2 の順6・7 で足す
+            // 6.6:身長・利き手・連続移動・移動の速さ・休憩案内
             GameObject canvas = UIBuildUtility.CreateCanvas(holder.transform, "設定のパネル", new Vector2(800f, 860f),
                 UIBuildUtility.Background);
             canvas.transform.position = new Vector3(0f, 1.45f, 1f);
@@ -160,11 +200,38 @@ namespace VRGame3.Common.EditorTools
             UIBuildUtility.NormalButton(c, "身長を上げる", "+", font, 48, new Vector2(240f, 250f), new Vector2(100f, 76f),
                 panel.IncreaseHeight);
 
+            var images = new Image[9];
+            var texts = new TMP_Text[9];
+            var buttons = new Button[9];
+
+            void Choice(SettingsPanel.Choice choice, string label, float x, float y, Vector2 size, float fontSize,
+                UnityEngine.Events.UnityAction action)
+            {
+                (Image image, TMP_Text text) = UIBuildUtility.NormalButton(c, choice.ToString(), label, font, fontSize,
+                    new Vector2(x, y), size, action);
+                images[(int)choice] = image;
+                texts[(int)choice] = text;
+                buttons[(int)choice] = image.GetComponent<Button>();
+            }
+
+            Vector2 pair = new Vector2(170f, 76f);
             UIBuildUtility.Label(c, "利き手の見出し", "利き手", font, 36, new Vector2(-270f, 140f), new Vector2(240f, 60f), light);
-            (Image leftImage, TMP_Text leftText) = UIBuildUtility.NormalButton(c, "左利き", "左", font, 38,
-                new Vector2(-40f, 140f), new Vector2(170f, 76f), panel.SelectLeftHand);
-            (Image rightImage, TMP_Text rightText) = UIBuildUtility.PrimaryButton(c, "右利き", "● 右", font, 38,
-                new Vector2(160f, 140f), new Vector2(170f, 76f), panel.SelectRightHand);
+            Choice(SettingsPanel.Choice.LeftHand, "左", -40f, 140f, pair, 38, panel.SelectLeftHand);
+            Choice(SettingsPanel.Choice.RightHand, "右", 160f, 140f, pair, 38, panel.SelectRightHand);
+
+            UIBuildUtility.Label(c, "連続移動の見出し", "連続移動", font, 36, new Vector2(-270f, 30f), new Vector2(240f, 60f), light);
+            Choice(SettingsPanel.Choice.MoveOff, "オフ", -40f, 30f, pair, 38, panel.MoveOff);
+            Choice(SettingsPanel.Choice.MoveOn, "オン", 160f, 30f, pair, 38, panel.MoveOn);
+
+            UIBuildUtility.Label(c, "速さの見出し", "移動の速さ", font, 34, new Vector2(-270f, -80f), new Vector2(240f, 60f), light);
+            Vector2 speed = new Vector2(140f, 76f);
+            Choice(SettingsPanel.Choice.SpeedSlow, "おそい", -60f, -80f, speed, 34, panel.SpeedSlow);
+            Choice(SettingsPanel.Choice.SpeedNormal, "ふつう", 90f, -80f, speed, 34, panel.SpeedNormal);
+            Choice(SettingsPanel.Choice.SpeedFast, "はやい", 240f, -80f, speed, 34, panel.SpeedFast);
+
+            UIBuildUtility.Label(c, "休憩案内の見出し", "休憩案内", font, 36, new Vector2(-270f, -190f), new Vector2(240f, 60f), light);
+            Choice(SettingsPanel.Choice.RestOn, "オン", -40f, -190f, pair, 38, panel.RestOn);
+            Choice(SettingsPanel.Choice.RestOff, "オフ", 160f, -190f, pair, 38, panel.RestOff);
 
             UIBuildUtility.PrimaryButton(c, "とじる", "とじる", font, 46, new Vector2(0f, -340f), new Vector2(340f, 96f),
                 panel.Close);
@@ -172,10 +239,9 @@ namespace VRGame3.Common.EditorTools
             var so = new SerializedObject(panel);
             so.FindProperty("panelRoot").objectReferenceValue = canvas;
             so.FindProperty("heightText").objectReferenceValue = heightText;
-            so.FindProperty("leftButtonImage").objectReferenceValue = leftImage;
-            so.FindProperty("leftButtonText").objectReferenceValue = leftText;
-            so.FindProperty("rightButtonImage").objectReferenceValue = rightImage;
-            so.FindProperty("rightButtonText").objectReferenceValue = rightText;
+            SetArray(so.FindProperty("choiceImages"), images);
+            SetArray(so.FindProperty("choiceTexts"), texts);
+            SetArray(so.FindProperty("choiceButtons"), buttons);
             so.ApplyModifiedPropertiesWithoutUndo();
             canvas.SetActive(false);
             return panel;
@@ -332,6 +398,15 @@ namespace VRGame3.Common.EditorTools
         public static AudioClip PlaceholderClip(string name)
         {
             return AssetDatabase.LoadAssetAtPath<AudioClip>($"Assets/_Project/Art/Audio/Placeholder/{name}.wav");
+        }
+
+        private static void SetArray(SerializedProperty property, Object[] values)
+        {
+            property.arraySize = values.Length;
+            for (int i = 0; i < values.Length; i++)
+            {
+                property.GetArrayElementAtIndex(i).objectReferenceValue = values[i];
+            }
         }
 
         private static Image Circle(Transform parent, string name, Sprite sprite, float size, Color color)

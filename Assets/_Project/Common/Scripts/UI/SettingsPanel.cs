@@ -5,29 +5,42 @@ using UnityEngine.UI;
 namespace VRGame3.Common
 {
     /// <summary>
-    /// 共通の設定パネル(docs/plan.md「設定と保存」)。ハブの「せってい」看板とメニューの「せってい」から開く。
-    /// 変えた値はすぐ保存する(SaveStore)。今は身長と利き手。連続移動と休憩案内は M2 の順6・7で足す。
-    /// この部品はパネル(panelRoot)とは別の、いつも有効な物に付ける。
+    /// 共通の設定パネル(docs/plan.md「設定と保存」、見た目は docs/art-direction.md 6.6)。
+    /// ハブの「せってい」看板とメニューの「せってい」から開く。中身は身長・利き手・連続移動(オン/オフと速さ3段)・休憩案内。
+    /// 変えた値はすぐ保存する(SaveStore)。この部品はパネル(panelRoot)とは別の、いつも有効な物に付ける。
     /// </summary>
     public class SettingsPanel : MonoBehaviour
     {
+        /// <summary>選択肢のボタンの並び(choiceImages・choiceTexts・choiceButtons の順番)。</summary>
+        public enum Choice
+        {
+            LeftHand,
+            RightHand,
+            MoveOff,
+            MoveOn,
+            SpeedSlow,
+            SpeedNormal,
+            SpeedFast,
+            RestOn,
+            RestOff,
+        }
+
+        private static readonly string[] Labels = { "左", "右", "オフ", "オン", "おそい", "ふつう", "はやい", "オン", "オフ" };
+
         [Tooltip("パネル全体(表示・非表示を切り替える)")]
         [SerializeField] private GameObject panelRoot;
 
         [Tooltip("身長の数字")]
         [SerializeField] private TMP_Text heightText;
 
-        [Tooltip("「左」ボタンの背景")]
-        [SerializeField] private Image leftButtonImage;
+        [Tooltip("選択肢のボタンの背景(Choice の順)")]
+        [SerializeField] private Image[] choiceImages = new Image[9];
 
-        [Tooltip("「左」ボタンの文字")]
-        [SerializeField] private TMP_Text leftButtonText;
+        [Tooltip("選択肢のボタンの文字(Choice の順)")]
+        [SerializeField] private TMP_Text[] choiceTexts = new TMP_Text[9];
 
-        [Tooltip("「右」ボタンの背景")]
-        [SerializeField] private Image rightButtonImage;
-
-        [Tooltip("「右」ボタンの文字")]
-        [SerializeField] private TMP_Text rightButtonText;
+        [Tooltip("選択肢のボタン(Choice の順。速さは連続移動がオフの間は押せなくする)")]
+        [SerializeField] private Button[] choiceButtons = new Button[9];
 
         [Tooltip("ボタン1回で変わる身長(cm)")]
         [SerializeField] private int heightStep = 5;
@@ -50,6 +63,12 @@ namespace VRGame3.Common
 
         [Tooltip("選んでいないボタンの文字の色")]
         [SerializeField] private Color unselectedTextColor = new Color32(0xFF, 0xFD, 0xF7, 0xFF);
+
+        [Tooltip("使えないボタンの色")]
+        [SerializeField] private Color disabledColor = new Color32(0xB8, 0xB4, 0xC8, 0xFF);
+
+        [Tooltip("使えないボタンの文字の色")]
+        [SerializeField] private Color disabledTextColor = new Color32(0x4A, 0x46, 0x60, 0xFF);
 
         /// <summary>パネルが出ているか。</summary>
         public bool IsOpen { get; private set; }
@@ -111,15 +130,19 @@ namespace VRGame3.Common
             SaveStore.SaveSettings();
         }
 
-        public void SelectLeftHand()
-        {
-            Settings.leftHanded = true;
-            SaveStore.SaveSettings();
-        }
+        public void SelectLeftHand() => Set(() => Settings.leftHanded = true);
+        public void SelectRightHand() => Set(() => Settings.leftHanded = false);
+        public void MoveOff() => Set(() => Settings.continuousMove = false);
+        public void MoveOn() => Set(() => Settings.continuousMove = true);
+        public void SpeedSlow() => Set(() => Settings.moveSpeedLevel = 0);
+        public void SpeedNormal() => Set(() => Settings.moveSpeedLevel = 1);
+        public void SpeedFast() => Set(() => Settings.moveSpeedLevel = 2);
+        public void RestOn() => Set(() => Settings.restReminder = true);
+        public void RestOff() => Set(() => Settings.restReminder = false);
 
-        public void SelectRightHand()
+        private static void Set(System.Action change)
         {
-            Settings.leftHanded = false;
+            change();
             SaveStore.SaveSettings();
         }
 
@@ -130,22 +153,37 @@ namespace VRGame3.Common
                 heightText.text = $"{Settings.heightCm} cm";
             }
 
-            SetChoice(leftButtonImage, leftButtonText, "左", Settings.leftHanded);
-            SetChoice(rightButtonImage, rightButtonText, "右", !Settings.leftHanded);
+            bool move = Settings.continuousMove;
+            bool[] selected =
+            {
+                Settings.leftHanded, !Settings.leftHanded, !move, move,
+                Settings.moveSpeedLevel == 0, Settings.moveSpeedLevel == 1, Settings.moveSpeedLevel == 2,
+                Settings.restReminder, !Settings.restReminder,
+            };
+            for (int i = 0; i < selected.Length; i++)
+            {
+                bool isSpeed = i >= (int)Choice.SpeedSlow && i <= (int)Choice.SpeedFast;
+                SetChoice(i, Labels[i], selected[i], !isSpeed || move);
+            }
         }
 
-        /// <summary>選んでいる方は色に加えて「●」の印でも示す(色だけに頼らない)。</summary>
-        private void SetChoice(Image image, TMP_Text text, string label, bool selected)
+        /// <summary>選んでいる方は色に加えて「●」の印でも示す(色だけに頼らない)。使えないボタンは灰色で押せなくする。</summary>
+        private void SetChoice(int index, string label, bool selected, bool usable)
         {
-            if (image != null)
+            if (index < choiceButtons.Length && choiceButtons[index] != null)
             {
-                image.color = selected ? selectedColor : unselectedColor;
+                choiceButtons[index].interactable = usable;
             }
 
-            if (text != null)
+            if (index < choiceImages.Length && choiceImages[index] != null)
             {
-                text.text = selected ? $"● {label}" : label;
-                text.color = selected ? selectedTextColor : unselectedTextColor;
+                choiceImages[index].color = !usable ? disabledColor : selected ? selectedColor : unselectedColor;
+            }
+
+            if (index < choiceTexts.Length && choiceTexts[index] != null)
+            {
+                choiceTexts[index].text = selected ? $"● {label}" : label;
+                choiceTexts[index].color = !usable ? disabledTextColor : selected ? selectedTextColor : unselectedTextColor;
             }
         }
 

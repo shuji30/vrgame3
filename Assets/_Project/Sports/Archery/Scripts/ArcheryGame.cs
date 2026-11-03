@@ -186,6 +186,8 @@ namespace VRGame3.Sports.Archery
             }
 
             RoundFinished?.Invoke(round, sheet.GetRoundTotal(round));
+            // ラウンドの終わりと結果は休憩案内を出してよい区切り
+            RestReminder.AtBreak();
             if (sheet.IsGameOver)
             {
                 StartCoroutine(FinishGame());

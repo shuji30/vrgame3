@@ -10,6 +10,8 @@ namespace VRGame3.Common
     /// 押し込んだ瞬間のタッチ位置 X が中央ならテレポート(押している間は放物線を表示し、離した地点へ移動)、
     /// 左右ならスナップターン(1回の押し込みで1回だけ回る)。
     /// 左右のコントローラーそれぞれに1つずつ付ける。
+    /// 設定で連続移動をオンにすると(docs/plan.md「連続移動」)、テレポートの代わりに、利き手でない方のトラックパッドに
+    /// 触れている方向へ移動する。スナップターンは両手の左右の押し込みのまま。押し込んでいる間は移動しない。
     /// </summary>
     public class TrackpadLocomotion : MonoBehaviour
     {
@@ -81,8 +83,27 @@ namespace VRGame3.Common
         [Tooltip("移動できない場所を指しているときの線の色")]
         [SerializeField] private Color invalidColor = new Color(1f, 0.32f, 0.37f);
 
+        [Header("連続移動(設定でオンにしたときだけ)")]
+        [Tooltip("タッチ位置が中心からこの距離以内なら止まる(0〜1)")]
+        [Range(0f, 0.9f)]
+        [SerializeField] private float moveDeadZone = 0.2f;
+
+        [Tooltip("タッチ位置が中心からこの距離以上で最大の速さ(0〜1)")]
+        [Range(0.1f, 1f)]
+        [SerializeField] private float moveFullAt = 0.9f;
+
+        [Tooltip("最大の速さ(m/秒):おそい / ふつう / はやい")]
+        [SerializeField] private float[] moveSpeeds = { 1.5f, 2.0f, 2.5f };
+
+        [Tooltip("オンにすると、向きの基準を頭の向きにする(オフならこのコントローラーの向き)")]
+        [SerializeField] private bool moveRelativeToHead;
+
+        [Tooltip("壁に近づける距離(体の半径、m)")]
+        [SerializeField] private float bodyRadius = 0.2f;
+
         private InputAction trackpadPosition;
         private InputAction trackpadClick;
+        private InputAction trackpadTouch;
         private Mode mode = Mode.None;
         private bool hasValidTarget;
         private Vector3 targetPoint;
@@ -112,6 +133,10 @@ namespace VRGame3.Common
                 $"{hand} Trackpad Click",
                 InputActionType.Button,
                 $"<XRController>{{{handUsage}}}/{{Primary2DAxisClick}}");
+            trackpadTouch = new InputAction(
+                $"{hand} Trackpad Touch",
+                InputActionType.Button,
+                $"<XRController>{{{handUsage}}}/{{Primary2DAxisTouch}}");
 
             SetArcVisible(false);
         }
@@ -120,12 +145,14 @@ namespace VRGame3.Common
         {
             trackpadPosition.Enable();
             trackpadClick.Enable();
+            trackpadTouch.Enable();
         }
 
         private void OnDisable()
         {
             trackpadPosition.Disable();
             trackpadClick.Disable();
+            trackpadTouch.Disable();
             mode = Mode.None;
             SetArcVisible(false);
         }
@@ -134,6 +161,7 @@ namespace VRGame3.Common
         {
             trackpadPosition?.Dispose();
             trackpadClick?.Dispose();
+            trackpadTouch?.Dispose();
         }
 
         private void Update()
@@ -143,18 +171,35 @@ namespace VRGame3.Common
                 return;
             }
 
+            bool continuous = SaveStore.Settings.continuousMove;
+            if (continuous && mode == Mode.Teleport)
+            {
+                // テレポートの途中で連続移動に切り替わったら、テレポートをやめる
+                mode = Mode.None;
+                SetArcVisible(false);
+            }
+
             if (trackpadClick.WasPressedThisFrame())
             {
                 float x = trackpadPosition.ReadValue<Vector2>().x;
                 if (Mathf.Abs(x) < centerThreshold)
                 {
-                    mode = Mode.Teleport;
+                    if (!continuous)
+                    {
+                        mode = Mode.Teleport;
+                    }
                 }
                 else
                 {
                     // 右を押したら右回り(Y 軸の正方向)、左なら左回り
                     xrOrigin.RotateAroundCameraUsingOriginUp(Mathf.Sign(x) * snapTurnAngle);
                 }
+            }
+
+            if (continuous)
+            {
+                UpdateContinuousMove();
+                return;
             }
 
             if (mode != Mode.Teleport)
@@ -174,6 +219,73 @@ namespace VRGame3.Common
                 mode = Mode.None;
                 SetArcVisible(false);
             }
+        }
+
+        /// <summary>
+        /// 連続移動:利き手でない方のトラックパッドに触れている方向へ進む。押し込んでいる間は止まる。
+        /// 行き先の真下が移動できる床でなければ、また壁があれば進まない。
+        /// </summary>
+        private void UpdateContinuousMove()
+        {
+            GameSettings settings = SaveStore.Settings;
+            bool isMoveHand = settings.leftHanded ? hand == Hand.Right : hand == Hand.Left;
+            if (!isMoveHand || !trackpadTouch.IsPressed() || trackpadClick.IsPressed())
+            {
+                return;
+            }
+
+            Vector2 touch = trackpadPosition.ReadValue<Vector2>();
+            float amount = Mathf.InverseLerp(moveDeadZone, moveFullAt, touch.magnitude);
+            if (amount <= 0f)
+            {
+                return;
+            }
+
+            Transform origin = xrOrigin.Origin.transform;
+            Vector3 up = origin.up;
+            Transform basis = moveRelativeToHead ? xrOrigin.Camera.transform : aimSource;
+            Vector3 forward = Vector3.ProjectOnPlane(basis.forward, up).normalized;
+            Vector3 right = Vector3.Cross(up, forward);
+            Vector3 direction = (right * touch.x + forward * touch.y).normalized;
+            float maxSpeed = moveSpeeds.Length == 0 ? 2f : moveSpeeds[Mathf.Clamp(settings.moveSpeedLevel, 0, moveSpeeds.Length - 1)];
+            Vector3 move = direction * (maxSpeed * amount * Time.deltaTime);
+
+            Vector3 head = xrOrigin.Camera.transform.position;
+            Vector3 feet = head - up * Vector3.Dot(head - origin.position, up);
+            if (!CanMoveTo(feet, move, up))
+            {
+                return;
+            }
+
+            origin.position += move;
+        }
+
+        /// <summary>足元から move だけ進んでよいか(壁がなく、行き先の真下が移動できる床か)。</summary>
+        private bool CanMoveTo(Vector3 feet, Vector3 move, Vector3 up)
+        {
+            float distance = move.magnitude;
+            if (distance <= 0f)
+            {
+                return false;
+            }
+
+            // 膝の高さで、進む向きに壁がないか
+            Vector3 knee = feet + up * 0.5f;
+            if (Physics.SphereCast(knee, bodyRadius * 0.5f, move / distance, out _, distance + bodyRadius, teleportLayers,
+                    QueryTriggerInteraction.Ignore))
+            {
+                return false;
+            }
+
+            // 行き先の真下に床があるか(テレポートと同じ決まり)
+            Vector3 target = feet + move;
+            if (!Physics.Raycast(target + up * 0.5f, -up, out RaycastHit hit, 1.5f, teleportLayers, QueryTriggerInteraction.Ignore))
+            {
+                return false;
+            }
+
+            return Vector3.Angle(hit.normal, up) <= maxSlopeAngle &&
+                   (!requireTeleportArea || hit.collider.GetComponentInParent<TeleportArea>() != null);
         }
 
         /// <summary>

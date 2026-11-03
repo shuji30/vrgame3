@@ -150,10 +150,31 @@ namespace VRGame3.Common.EditorTools
             if (onClick != null)
             {
                 UnityEventTools.AddPersistentListener(button.onClick, onClick);
+                AddFeedback(go, text);
             }
 
             TMP_Text label = Label(go.transform, "文字", text, font, size, Vector2.zero, boxSize, textColor);
             return (image, label);
+        }
+
+        // 「戻る」の音にするボタンの文字(閉じる・続ける・やめる)。それ以外は「決める」の音
+        private static readonly string[] BackLabels = { "とじる", "つづける", "もどる" };
+
+        /// <summary>レイが当たったときの枠と、押したときの縮み・音・振動(6.4)。</summary>
+        private static void AddFeedback(GameObject go, string text)
+        {
+            var outline = go.AddComponent<Outline>();
+            outline.effectColor = TextLight;
+            outline.effectDistance = new Vector2(6f, -6f);
+            outline.enabled = false;
+
+            var feedback = go.AddComponent<ButtonFeedback>();
+            bool back = System.Array.IndexOf(BackLabels, text) >= 0;
+            var so = new SerializedObject(feedback);
+            so.FindProperty("outline").objectReferenceValue = outline;
+            so.FindProperty("clickClip").objectReferenceValue = AssetDatabase.LoadAssetAtPath<AudioClip>(
+                $"Assets/_Project/Art/Audio/Placeholder/{(back ? "SFX_UI_Back" : "SFX_UI_Select")}.wav");
+            so.ApplyModifiedPropertiesWithoutUndo();
         }
 
         /// <summary>主ボタン(黄色・暗い文字)。</summary>

@@ -19,6 +19,15 @@ namespace VRGame3.Common
         [Tooltip("暗くする・明るくするのにかける秒数")]
         [SerializeField] private float fadeTime = 0.3f;
 
+        [Tooltip("暗くし始めるときの音(シーン切り替え)")]
+        [SerializeField] private AudioSource audioSource;
+
+        [SerializeField] private AudioClip fadeOutClip;
+
+        [Tooltip("切り替えの音の音量(0〜1)")]
+        [Range(0f, 1f)]
+        [SerializeField] private float volume = 0.13f;
+
         private static readonly int ColorId = Shader.PropertyToID("_Color");
 
         private Material material;
@@ -71,6 +80,11 @@ namespace VRGame3.Common
         public IEnumerator FadeTo(float target)
         {
             float start = alpha;
+            if (target > start && audioSource != null && fadeOutClip != null)
+            {
+                audioSource.PlayOneShot(fadeOutClip, volume);
+            }
+
             for (float t = 0f; t < fadeTime; t += Time.unscaledDeltaTime)
             {
                 SetAlpha(Mathf.Lerp(start, target, Mathf.SmoothStep(0f, 1f, t / fadeTime)));

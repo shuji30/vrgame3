@@ -880,6 +880,7 @@ Vive ワンドの振動は強弱と長さしか変えられない。音と同時
 | F-001 | フォント | (例)フォント名 | https://… | 作者名 | SIL OFL 1.1 | 要(ライセンス文を同梱) | 2026-11-xx | `Assets/ThirdParty/Fonts/…` | UI 全般 | なし |
 | F-002 | フォント | M PLUS Rounded 1c Medium | https://github.com/google/fonts/tree/main/ofl/mplusrounded1c | Coji Morishita, M+ Fonts Project | SIL OFL 1.1 | 要(ライセンス文を同梱) | 2026-11-03 | `Assets/ThirdParty/Fonts/MPLUSRounded1c/` | ボウリングのはじめにパネル(日本語の文字) | なし(TextMeshPro の動的フォントアセットを `_Project` 側に作る) |
 | S-002 | 音 | 仮の合成音(効果音・ジングル・環境音 22個) | — | 自作(Python で合成) | 自作 | 不要 | 2026-11-03 | `Assets/_Project/Art/Audio/Placeholder/` | ボウリングの音全般 | 後で CC0 素材に差し替える |
+| S-003 | 音 | M2 の仮の合成音(アーチェリー・ピンの崩れる音・結果・ランクアップ・UI・休憩の知らせ・切り替え・葉のざわめき 24個) | — | 自作(Python で合成) | 自作 | 不要 | 2026-11-03 | `Assets/_Project/Art/Audio/Placeholder/` | アーチェリー、結果、UI、ハブ | 後で CC0 素材に差し替える |
 
 ID の頭文字:M=モデル、T=テクスチャ・HDRI、S=音、F=フォント、E=エフェクト・シェーダー。
 
