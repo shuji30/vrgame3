@@ -57,6 +57,7 @@ namespace VRGame3.Hub.EditorTools
             }
 
             SceneBuildUtility.EnsureFolder(SceneFolder);
+            AssetDatabase.Refresh();
             Scene scene = EditorSceneManager.NewScene(NewSceneSetup.DefaultGameObjects, NewSceneMode.Single);
             GameObject defaultCamera = GameObject.FindWithTag("MainCamera");
             if (defaultCamera != null)
@@ -74,9 +75,10 @@ namespace VRGame3.Hub.EditorTools
 
             var root = new GameObject("ハブ");
             BuildGround(root.transform);
-            BuildPalms(root.transform);
+            List<Transform> palms = BuildPalms(root.transform);
             BuildPathsAndGates(root.transform);
             BuildDistantVenues(root.transform);
+            BuildAmbient(root.transform, palms);
 
             UIBuildUtility.EnsureEventSystem();
             BuildSportSign(root.transform, font, "ボウリングの看板", "ボウリング", SportIds.Bowling, "Bowling",
@@ -166,8 +168,9 @@ namespace VRGame3.Hub.EditorTools
                 Mat("H_Sea", "#2FB5B0"), false);
         }
 
-        private static void BuildPalms(Transform root)
+        private static List<Transform> BuildPalms(Transform root)
         {
+            var leaves = new List<Transform>();
             var parent = new GameObject("ヤシ").transform;
             parent.SetParent(root, false);
             Vector3[] positions =
@@ -179,9 +182,96 @@ namespace VRGame3.Hub.EditorTools
             {
                 Shape(parent, $"ヤシの幹{i + 1}", PrimitiveType.Cylinder, positions[i] + new Vector3(0f, 2f, 0f),
                     new Vector3(0.25f, 2f, 0.25f), Mat("H_Trunk", "#C98B55"), false);
-                Shape(parent, $"ヤシの葉{i + 1}", PrimitiveType.Sphere, positions[i] + new Vector3(0f, 4.1f, 0f),
-                    new Vector3(2.2f, 0.5f, 2.2f), Mat("H_Leaf", "#6CC36A"), false);
+                leaves.Add(Shape(parent, $"ヤシの葉{i + 1}", PrimitiveType.Sphere, positions[i] + new Vector3(0f, 4.1f, 0f),
+                    new Vector3(2.2f, 0.5f, 2.2f), Mat("H_Leaf", "#6CC36A"), false).transform);
             }
+
+            return leaves;
+        }
+
+        /// <summary>
+        /// 環境音と BGM(docs/art-direction.md 8.1・8.3):波は砂浜の縁の3か所から 3D、鳥はヤシから、風と BGM は 2D で小さく。
+        /// </summary>
+        private static void BuildAmbient(Transform root, List<Transform> birdPoints)
+        {
+            var parent = new GameObject("環境音と BGM").transform;
+            parent.SetParent(root, false);
+
+            Vector3[] waves = { new Vector3(0f, 0f, 20f), new Vector3(-14f, 0f, -14f), new Vector3(14f, 0f, -14f) };
+            for (int i = 0; i < waves.Length; i++)
+            {
+                var wave = new GameObject($"波{i + 1}");
+                wave.transform.SetParent(parent, false);
+                wave.transform.position = waves[i];
+                AudioSource source = Source(wave, true, 5f, 60f);
+                source.clip = Clip("AMB_Wave_Loop");
+                source.loop = true;
+                source.playOnAwake = true;
+                source.volume = 0.06f;
+                source.pitch = 0.95f + 0.05f * i;
+            }
+
+            var birds = new GameObject("鳥");
+            birds.transform.SetParent(parent, false);
+            Source(birds, true, 1f, 30f);
+            var oneShot = birds.AddComponent<RandomOneShot>();
+            var so = new SerializedObject(oneShot);
+            SerializedProperty clips = so.FindProperty("clips");
+            clips.arraySize = 4;
+            for (int i = 0; i < 4; i++)
+            {
+                clips.GetArrayElementAtIndex(i).objectReferenceValue = Clip($"AMB_Bird_{i + 1}");
+            }
+
+            SerializedProperty points = so.FindProperty("points");
+            points.arraySize = birdPoints.Count;
+            for (int i = 0; i < birdPoints.Count; i++)
+            {
+                points.GetArrayElementAtIndex(i).objectReferenceValue = birdPoints[i];
+            }
+
+            so.FindProperty("volume").floatValue = 0.08f;
+            so.ApplyModifiedPropertiesWithoutUndo();
+
+            var wind = new GameObject("風");
+            wind.transform.SetParent(parent, false);
+            AudioSource windSource = Source(wind, false, 1f, 30f);
+            windSource.clip = Clip("AMB_Wind_Loop");
+            windSource.loop = true;
+            windSource.playOnAwake = true;
+            windSource.volume = 0.04f;
+
+            var bgm = new GameObject("BGM");
+            bgm.transform.SetParent(parent, false);
+            AudioSource bgmSource = Source(bgm, false, 1f, 30f);
+            bgmSource.clip = Clip("BGM_Hub_Loop");
+            bgmSource.loop = true;
+            bgmSource.playOnAwake = true;
+            // 8.5 の目安 -22dB
+            bgmSource.volume = 0.08f;
+        }
+
+        private static AudioSource Source(GameObject go, bool spatial, float minDistance, float maxDistance)
+        {
+            var source = go.AddComponent<AudioSource>();
+            source.playOnAwake = false;
+            source.spatialBlend = spatial ? 1f : 0f;
+            source.rolloffMode = AudioRolloffMode.Logarithmic;
+            source.minDistance = minDistance;
+            source.maxDistance = maxDistance;
+            source.dopplerLevel = 0f;
+            return source;
+        }
+
+        private static AudioClip Clip(string name)
+        {
+            var clip = AssetDatabase.LoadAssetAtPath<AudioClip>($"Assets/_Project/Art/Audio/Placeholder/{name}.wav");
+            if (clip == null)
+            {
+                Debug.LogWarning($"[ハブ] 音のファイルが見つかりません: {name}.wav");
+            }
+
+            return clip;
         }
 
         /// <summary>会場への道と入口の門(景色だけ。中は歩けない)。</summary>
