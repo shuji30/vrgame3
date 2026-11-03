@@ -26,6 +26,10 @@ namespace VRGame3.Common
 
             SceneTransition.PreviousScene = SceneManager.GetActiveScene().name;
             SceneTransition.Arriving = true;
+            // 前のシーンの「掴めなくする」と「ゲームの途中」を消してから読み込む
+            InputGate.Clear();
+            InputGate.BlockGrab(this);
+            GameSession.InProgress = false;
             AsyncOperation load = SceneManager.LoadSceneAsync(sceneName, LoadSceneMode.Single);
             if (load == null)
             {

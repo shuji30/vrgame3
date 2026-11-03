@@ -17,8 +17,13 @@ namespace VRGame3.Hub
         [Tooltip("会場のシーンの名前")]
         [SerializeField] private string sceneName = "Bowling";
 
+        [Tooltip("ランクのメダル")]
         [SerializeField] private RankMedal medal;
+
+        [Tooltip("ポイントの文字")]
         [SerializeField] private TMP_Text pointsText;
+
+        [Tooltip("ベストの文字")]
         [SerializeField] private TMP_Text bestText;
 
         [Tooltip("「あそぶ」ボタン")]

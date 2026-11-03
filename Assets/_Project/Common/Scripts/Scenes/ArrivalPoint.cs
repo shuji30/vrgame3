@@ -1,3 +1,4 @@
+using System.Collections;
 using Unity.XR.CoreUtils;
 using UnityEngine;
 
@@ -7,6 +8,7 @@ namespace VRGame3.Common
     /// 決まったシーンから戻ってきたときの出現位置(ハブでは「前に入った会場の看板の前」)。
     /// 前のシーンの名前が fromScene と同じなら、頭がこの位置の真上に来て、この向き(青い矢印 Z+)を向くように XR Origin を動かす。
     /// 切り替えのフェードで覆っている間に動かすので、プレイヤーには視点が動いて見えない。
+    /// 頭の実際の姿勢がカメラに入るのを待つため、数フレーム後に動かす(ScreenFader はそれより後に明るくし始める)。
     /// </summary>
     public class ArrivalPoint : MonoBehaviour
     {
@@ -16,21 +18,29 @@ namespace VRGame3.Common
         [Tooltip("動かす XR Origin。空ならシーンから探す")]
         [SerializeField] private XROrigin xrOrigin;
 
-        private void Start()
+        /// <summary>動かすまでに待つフレーム数。</summary>
+        public const int WaitFrames = 2;
+
+        private IEnumerator Start()
         {
             if (string.IsNullOrEmpty(fromScene) || fromScene != SceneTransition.PreviousScene)
             {
-                return;
+                yield break;
             }
 
             if (xrOrigin == null)
             {
-                xrOrigin = FindFirstObjectByType<XROrigin>();
+                xrOrigin = FindAnyObjectByType<XROrigin>();
             }
 
             if (xrOrigin == null || xrOrigin.Camera == null)
             {
-                return;
+                yield break;
+            }
+
+            for (int i = 0; i < WaitFrames; i++)
+            {
+                yield return null;
             }
 
             Vector3 forward = Vector3.ProjectOnPlane(transform.forward, Vector3.up).normalized;

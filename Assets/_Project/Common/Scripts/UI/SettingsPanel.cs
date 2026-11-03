@@ -17,12 +17,16 @@ namespace VRGame3.Common
         [Tooltip("身長の数字")]
         [SerializeField] private TMP_Text heightText;
 
-        [Tooltip("「左」ボタンの背景と文字")]
+        [Tooltip("「左」ボタンの背景")]
         [SerializeField] private Image leftButtonImage;
+
+        [Tooltip("「左」ボタンの文字")]
         [SerializeField] private TMP_Text leftButtonText;
 
-        [Tooltip("「右」ボタンの背景と文字")]
+        [Tooltip("「右」ボタンの背景")]
         [SerializeField] private Image rightButtonImage;
+
+        [Tooltip("「右」ボタンの文字")]
         [SerializeField] private TMP_Text rightButtonText;
 
         [Tooltip("ボタン1回で変わる身長(cm)")]
@@ -35,9 +39,16 @@ namespace VRGame3.Common
         [SerializeField] private float drop = 0.15f;
 
         [Header("色")]
+        [Tooltip("選んでいるボタンの色")]
         [SerializeField] private Color selectedColor = new Color32(0xFF, 0xD2, 0x4A, 0xFF);
+
+        [Tooltip("選んでいないボタンの色")]
         [SerializeField] private Color unselectedColor = new Color32(0x6C, 0x8F, 0xCF, 0xFF);
+
+        [Tooltip("選んでいるボタンの文字の色")]
         [SerializeField] private Color selectedTextColor = new Color32(0x3A, 0x35, 0x50, 0xFF);
+
+        [Tooltip("選んでいないボタンの文字の色")]
         [SerializeField] private Color unselectedTextColor = new Color32(0xFF, 0xFD, 0xF7, 0xFF);
 
         /// <summary>パネルが出ているか。</summary>

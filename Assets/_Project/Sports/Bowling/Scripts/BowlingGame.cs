@@ -116,6 +116,30 @@ namespace VRGame3.Sports.Bowling
         /// <summary>10フレームを投げ終えたか。</summary>
         public bool IsGameOver => state == State.GameOver;
 
+        /// <summary>
+        /// ボール置き台を動かしてよいか(待っている状態で、どのボールも掴まれていないとき)。
+        /// </summary>
+        public bool CanMoveRack
+        {
+            get
+            {
+                if (state != State.Ready && state != State.GameOver)
+                {
+                    return false;
+                }
+
+                foreach (ThrowableObject ball in balls)
+                {
+                    if (ball != null && ball.IsHeld)
+                    {
+                        return false;
+                    }
+                }
+
+                return true;
+            }
+        }
+
         /// <summary>いまのスコア表。</summary>
         public BowlingScoreSheet Sheet => sheet;
 
@@ -238,6 +262,8 @@ namespace VRGame3.Sports.Bowling
             rescued = false;
             pinSetter.MarkStandingPins();
             state = State.Rolling;
+            // 投げた時点でゲームの途中(メニューからハブへもどるときに確認を出す)
+            GameSession.InProgress = true;
         }
 
         private void Update()

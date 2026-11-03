@@ -15,8 +15,8 @@ namespace VRGame3.Common
             Vector3 forward = Vector3.ProjectOnPlane(head.forward, Vector3.up);
             if (forward.sqrMagnitude < 0.0001f)
             {
-                // 真上・真下を向いているときは頭の上方向から前を決める
-                forward = Vector3.ProjectOnPlane(head.up, Vector3.up);
+                // 真上を向いているときは頭の下方向、真下を向いているときは上方向が、顔の前にあたる
+                forward = Vector3.ProjectOnPlane(head.forward.y > 0f ? -head.up : head.up, Vector3.up);
             }
 
             forward.Normalize();

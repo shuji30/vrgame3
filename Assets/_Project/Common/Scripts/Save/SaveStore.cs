@@ -17,6 +17,9 @@ namespace VRGame3.Common
 
         private static SaveData data;
 
+        // 読めないファイルを退避できなかったときは、上書きして消さないよう保存を止める
+        private static bool saveDisabled;
+
         /// <summary>設定か記録が変わって保存したときに呼ばれる(表示を更新するため)。</summary>
         public static event Action Changed;
 
@@ -93,6 +96,12 @@ namespace VRGame3.Common
         /// <summary>今の中身をファイルに書く。</summary>
         public static void Save()
         {
+            if (saveDisabled)
+            {
+                Changed?.Invoke();
+                return;
+            }
+
             string path = FilePath;
             string temp = path + ".tmp";
             try
@@ -150,14 +159,22 @@ namespace VRGame3.Common
             {
                 // 壊れたファイルは消さずに別名で残し、初期値で始める
                 string broken = Path.Combine(Path.GetDirectoryName(path),
-                    $"save.broken-{DateTime.Now:yyyyMMdd-HHmmss}.json");
+                    $"save.broken-{DateTime.Now:yyyyMMdd-HHmmss-fff}.json");
+                for (int i = 2; File.Exists(broken); i++)
+                {
+                    broken = Path.Combine(Path.GetDirectoryName(path),
+                        $"save.broken-{DateTime.Now:yyyyMMdd-HHmmss-fff}-{i}.json");
+                }
+
                 try
                 {
                     File.Move(path, broken);
                 }
                 catch (Exception moveError)
                 {
-                    Debug.LogWarning($"[保存] 読めないファイルを別名にできませんでした: {moveError.Message}");
+                    // 別名にできなければ、上書きされないようにこのセッションでは保存しない
+                    saveDisabled = true;
+                    Debug.LogWarning($"[保存] 読めないファイルを別名にできないので、このあいだは保存しません: {moveError.Message}");
                 }
 
                 Debug.LogWarning($"[保存] 保存ファイルを読めないので初期値で始めます(元のファイル: {broken})\n{e.Message}");
@@ -173,6 +190,7 @@ namespace VRGame3.Common
         {
             data = null;
             Changed = null;
+            saveDisabled = false;
         }
     }
 }

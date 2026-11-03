@@ -95,6 +95,19 @@ namespace VRGame3.Sports.Bowling
             ApplySettings(false);
         }
 
+        private void Update()
+        {
+            // 投球中に設定が変わったときは、投げ終わって待っている状態になってから置き台を動かす
+            TryMoveRack();
+
+            // メニューや設定パネル・休憩案内が出ている間は隠す(2枚を重ねて出さない。docs/art-direction.md 6.4)
+            bool visible = shown && !InputGate.GrabBlocked;
+            if (panelRoot.activeSelf != visible)
+            {
+                panelRoot.SetActive(visible);
+            }
+        }
+
         private void Start()
         {
             ApplySettings(false);
@@ -102,6 +115,13 @@ namespace VRGame3.Sports.Bowling
         }
 
         private static GameSettings Settings => SaveStore.Settings;
+
+        // パネルを出している状態か(メニューが出ている間は隠すが、この値は変えない)
+        private bool shown;
+
+        // 置き台に最後に当てはめた設定
+        private int appliedHeight = -1;
+        private bool appliedLeftHanded;
 
         /// <summary>身長を上げる(ボタンから呼ぶ)。</summary>
         public void IncreaseHeight()
@@ -139,6 +159,7 @@ namespace VRGame3.Sports.Bowling
                 game.NewGame();
             }
 
+            shown = false;
             panelRoot.SetActive(false);
             if (game != null)
             {
@@ -149,7 +170,8 @@ namespace VRGame3.Sports.Bowling
         /// <summary>パネルを出し、閉じるまでボールを掴めないようにする。</summary>
         public void Show()
         {
-            panelRoot.SetActive(true);
+            shown = true;
+            panelRoot.SetActive(!InputGate.GrabBlocked);
             if (game != null)
             {
                 game.SetInputLocked(true);
@@ -199,10 +221,28 @@ namespace VRGame3.Sports.Bowling
             SetHandButton(leftButtonImage, leftButtonText, "左", leftHanded);
             SetHandButton(rightButtonImage, rightButtonText, "右", !leftHanded);
 
-            if (rack != null)
+            TryMoveRack();
+        }
+
+        /// <summary>
+        /// 置き台を今の設定に合わせる。置き台を動かすと掴んでいないボールも置き直すので、
+        /// ボールが転がっている間や数えている間は動かさず、待っている状態になるまで後回しにする。
+        /// </summary>
+        private void TryMoveRack()
+        {
+            if (rack == null || (Settings.heightCm == appliedHeight && Settings.leftHanded == appliedLeftHanded))
             {
-                rack.Apply(heightCm, leftHanded);
+                return;
             }
+
+            if (game != null && !game.CanMoveRack)
+            {
+                return;
+            }
+
+            appliedHeight = Settings.heightCm;
+            appliedLeftHanded = Settings.leftHanded;
+            rack.Apply(appliedHeight, appliedLeftHanded);
         }
 
         private void SetHandButton(Image image, TMP_Text text, string label, bool selected)

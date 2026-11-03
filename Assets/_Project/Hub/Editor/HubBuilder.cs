@@ -140,7 +140,7 @@ namespace VRGame3.Hub.EditorTools
             Shape(parent, "中央の印", PrimitiveType.Cylinder, new Vector3(0f, 0f, 0f), new Vector3(1.2f, 0.01f, 1.2f),
                 Mat("H_Mark", "#F0C995"), false);
 
-            // 縁の石:半径 10.3 に 30° おき。道の位置(X ±2.6 付近、奥側)は抜く
+            // 縁の石:半径 10.3 に 30° おき。道の位置(X ±2.6 付近、奥側)にかかる石は抜く(30° おきの配置ではかからない)
             Material rock = Mat("H_Rock", "#B8B4C8");
             for (int i = 0; i < 12; i++)
             {
@@ -275,7 +275,8 @@ namespace VRGame3.Hub.EditorTools
 
             GameObject canvas = UIBuildUtility.CreateCanvas(sign.transform, "文字", new Vector2(2200f, 1700f),
                 UIBuildUtility.Background);
-            canvas.transform.localPosition = new Vector3(0f, 0f, -0.045f);
+            // 帯(前面 z -0.045)と同じ面にするとちらつくので、少し手前に出す
+            canvas.transform.localPosition = new Vector3(0f, 0f, -0.047f);
             canvas.transform.localRotation = Quaternion.identity;
             Transform c = canvas.transform;
 

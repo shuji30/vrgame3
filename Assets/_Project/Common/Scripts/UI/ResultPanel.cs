@@ -43,8 +43,11 @@ namespace VRGame3.Common
         [Tooltip("「もういちど」を押したとき")]
         [SerializeField] private UnityEvent retry = new UnityEvent();
 
+        // 結果を出している状態か(メニューが出ている間は隠すが、この値は変えない)
+        private bool shown;
+
         /// <summary>結果が出ているか。</summary>
-        public bool IsOpen => panelRoot != null && panelRoot.activeSelf;
+        public bool IsOpen => shown;
 
         /// <summary>「もういちど」を押したときに呼ばれる。</summary>
         public UnityEvent Retry => retry;
@@ -57,10 +60,21 @@ namespace VRGame3.Common
             }
         }
 
+        private void Update()
+        {
+            // メニューや設定パネル・休憩案内が出ている間は隠す(2枚を重ねて出さない。docs/art-direction.md 6.4)
+            bool visible = shown && !InputGate.GrabBlocked;
+            if (panelRoot != null && panelRoot.activeSelf != visible)
+            {
+                panelRoot.SetActive(visible);
+            }
+        }
+
         /// <summary>結果を出す。</summary>
         public void Show(GameRecordResult result)
         {
-            panelRoot.SetActive(true);
+            shown = true;
+            panelRoot.SetActive(!InputGate.GrabBlocked);
             if (newBestBadge != null)
             {
                 newBestBadge.SetActive(result.NewBest);
@@ -112,6 +126,7 @@ namespace VRGame3.Common
         public void Hide()
         {
             StopAllCoroutines();
+            shown = false;
             if (panelRoot != null)
             {
                 panelRoot.SetActive(false);

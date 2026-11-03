@@ -50,13 +50,21 @@ namespace VRGame3.Common
             }
         }
 
-        private void Start()
+        private IEnumerator Start()
         {
-            if (SceneTransition.Arriving)
+            if (!SceneTransition.Arriving)
             {
-                SceneTransition.Arriving = false;
-                StartCoroutine(FadeTo(0f));
+                yield break;
             }
+
+            SceneTransition.Arriving = false;
+            // 出現位置(ArrivalPoint)が頭の姿勢を待って動かし終えてから明るくする
+            for (int i = 0; i <= ArrivalPoint.WaitFrames; i++)
+            {
+                yield return null;
+            }
+
+            yield return FadeTo(0f);
         }
 
         /// <summary>濃さ(0 = 何もない、1 = 完全に覆う)を時間をかけて変える。</summary>
