@@ -122,6 +122,9 @@ namespace VRGame3.Sports.Archery
         /// <summary>矢を放ったときに呼ばれる。矢が止まったら onStopped(game が渡す)で知らせる。</summary>
         public event Action<Arrow> Fired;
 
+        /// <summary>矢をつがえたとき(てびきを進めるため)。</summary>
+        public event Action Nocked;
+
         /// <summary>新しく矢をつがえてよいか(進行役が決める)。</summary>
         public bool CanShoot { get; set; }
 
@@ -217,6 +220,7 @@ namespace VRGame3.Sports.Archery
         {
             nockedArrow = Instantiate(arrowTemplate);
             nockedArrow.gameObject.SetActive(true);
+            Nocked?.Invoke();
             drawDistance = 0f;
             if (drawSource != null)
             {

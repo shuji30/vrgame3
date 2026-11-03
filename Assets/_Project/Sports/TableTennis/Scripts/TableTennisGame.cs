@@ -221,7 +221,23 @@ namespace VRGame3.Sports.TableTennis
             EquipHands();
             GameSession.InProgress = false;
             RefreshBoard();
+            BeginTutorial();
             NextServe();
+        }
+
+        /// <summary>てびき(初めてのときだけ):1 ボールを出して投げ上げる → 2 打つ → 3 ルール。</summary>
+        private static void BeginTutorial()
+        {
+            bool left = SaveStore.Settings.leftHanded;
+            TutorialBoard.Begin("tabletennis",
+                new[]
+                {
+                    "ボールの手の トリガーで ボールが出る。\nはなすと上に投げる",
+                    "ラケットを ふって ボールに当てる。\nボタンは いらない",
+                    "相手のコートに 入れよう。\nおちた球は ひろわなくてよい",
+                },
+                new[] { TutorialBoard.Button.Trigger, TutorialBoard.Button.None, TutorialBoard.Button.None },
+                new[] { !left, left, left });
         }
 
         /// <summary>チャレンジの一覧を出す(「はじめに」パネルの「かだいをえらぶ」から呼ぶ)。</summary>
@@ -341,7 +357,9 @@ namespace VRGame3.Sports.TableTennis
 
             if (serveGuide != null)
             {
-                bool show = state == State.PlayerServe && !ball.IsHeld && !InputGate.GrabBlocked;
+                // てびきの板が出ている間は、サーブの案内は出さない(板と重ねない)
+                bool tutorial = TutorialBoard.Current != null && TutorialBoard.Current.Step >= 0;
+                bool show = state == State.PlayerServe && !ball.IsHeld && !InputGate.GrabBlocked && !tutorial;
                 if (serveGuide.activeSelf != show)
                 {
                     serveGuide.SetActive(show);
@@ -382,6 +400,7 @@ namespace VRGame3.Sports.TableTennis
             {
                 ball.ReleaseFromHand();
                 state = State.Rally;
+                TutorialBoard.Next(0);
             }
         }
 
@@ -444,6 +463,7 @@ namespace VRGame3.Sports.TableTennis
                     lastWasNet = true;
                     break;
                 case PingPongPhysics.EventKind.Racket:
+                    TutorialBoard.Next(1);
                     point = judge.OnHit(TTSide.Player);
                     if (!point.HasValue)
                     {
@@ -594,6 +614,7 @@ namespace VRGame3.Sports.TableTennis
 
         private void EndPoint(RallyJudge.Point point)
         {
+            TutorialBoard.Finish(2);
             cpu.Cancel();
             if (challengeId == "practice")
             {

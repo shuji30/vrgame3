@@ -86,6 +86,9 @@ namespace VRGame3.Common.EditorTools
             BuildMenu(root.transform, font, inHub, settingsPanel);
             BuildRestReminder(root.transform, font, inHub);
 
+            // てびきの板(M4)
+            AddTutorialBoard(root.transform);
+
             // 時間帯(M4)。シーンに入った暗い間に当てる
             var time = new GameObject("時間帯");
             time.transform.SetParent(root.transform, false);
@@ -563,6 +566,115 @@ namespace VRGame3.Common.EditorTools
             so.FindProperty("titleText").objectReferenceValue = title;
             so.ApplyModifiedPropertiesWithoutUndo();
             return selector;
+        }
+
+        /// <summary>
+        /// てびきの手順の板(6.14。800 × 520px)と、実際のコントローラーのボタンの光る輪を作る。XR Origin を置いたあとに呼ぶ。
+        /// </summary>
+        public static TutorialBoard AddTutorialBoard(Transform parent)
+        {
+            TMP_FontAsset font = UIBuildUtility.GetOrCreateFontAsset();
+            if (font == null)
+            {
+                return null;
+            }
+
+            UIBuildUtility.EnsureEventSystem();
+            var holder = new GameObject("てびき");
+            holder.transform.SetParent(parent, false);
+            var board = holder.AddComponent<TutorialBoard>();
+
+            GameObject canvas = UIBuildUtility.CreateCanvas(holder.transform, "てびきの板", new Vector2(800f, 520f), UIBuildUtility.Background);
+            canvas.transform.position = new Vector3(0f, 1.4f, 1f);
+            Transform c = canvas.transform;
+            TMP_Text title = UIBuildUtility.Label(c, "見出し", "あそびかた", font, 40, new Vector2(-120f, 210f), new Vector2(520f, 60f),
+                UIBuildUtility.TextSub);
+            TMP_Text body = UIBuildUtility.Label(c, "本文", "", font, 40, new Vector2(-120f, 40f), new Vector2(520f, 280f),
+                UIBuildUtility.TextLight);
+            body.textWrappingMode = TextWrappingModes.Normal;
+            body.alignment = TextAlignmentOptions.Left;
+            body.enableAutoSizing = true;
+            body.fontSizeMin = 28f;
+            body.fontSizeMax = 40f;
+
+            // Vive ワンドの図(おもて):本体・トラックパッド・メニューボタン・トリガー。教えるボタンを黄色にして輪を広げる
+            Sprite circle = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/Knob.psd");
+            Image ring = Circle(c, "輪", circle, 140f, UIBuildUtility.PrimaryColor);
+            ring.color = new Color(1f, 0.82f, 0.29f, 0.6f);
+            Image wandBody = UIBuildUtility.Button(c, "ワンド", "", font, 10, new Vector2(270f, -40f), new Vector2(110f, 320f),
+                CommonSceneBuilder.Hex("#6C8FCF"), Color.white, null).Item1;
+            Object.DestroyImmediate(wandBody.GetComponent<Button>());
+            Image pad = Circle(c, "トラックパッド", circle, 90f, UIBuildUtility.TextSub);
+            ((RectTransform)pad.transform).anchoredPosition = new Vector2(270f, 50f);
+            Image menu = UIBuildUtility.Button(c, "メニューボタン", "", font, 10, new Vector2(270f, 120f), new Vector2(40f, 18f),
+                UIBuildUtility.TextSub, Color.white, null).Item1;
+            Object.DestroyImmediate(menu.GetComponent<Button>());
+            Image trigger = UIBuildUtility.Button(c, "トリガー", "", font, 10, new Vector2(335f, 10f), new Vector2(26f, 80f),
+                UIBuildUtility.TextSub, Color.white, null).Item1;
+            Object.DestroyImmediate(trigger.GetComponent<Button>());
+            UIBuildUtility.Label(c, "トリガーの名前", "トリガー", font, 22, new Vector2(335f, -55f), new Vector2(120f, 30f), UIBuildUtility.TextLight);
+            UIBuildUtility.Label(c, "パッドの名前", "パッド", font, 22, new Vector2(270f, 105f - 10f), new Vector2(120f, 30f), UIBuildUtility.TextDark)
+                .gameObject.SetActive(false);
+
+            (Image ok, _) = UIBuildUtility.PrimaryButton(c, "わかった", "わかった", font, 40, new Vector2(-120f, -195f),
+                new Vector2(300f, 90f), board.OnOk);
+            ok.gameObject.SetActive(false);
+
+            var audio = holder.AddComponent<AudioSource>();
+            audio.playOnAwake = false;
+            audio.spatialBlend = 0f;
+
+            var so = new SerializedObject(board);
+            so.FindProperty("panelRoot").objectReferenceValue = canvas;
+            so.FindProperty("titleText").objectReferenceValue = title;
+            so.FindProperty("bodyText").objectReferenceValue = body;
+            so.FindProperty("triggerImage").objectReferenceValue = trigger;
+            so.FindProperty("padImage").objectReferenceValue = pad;
+            so.FindProperty("menuImage").objectReferenceValue = menu;
+            so.FindProperty("ring").objectReferenceValue = ring.transform;
+            so.FindProperty("okButton").objectReferenceValue = ok.gameObject;
+            so.FindProperty("source").objectReferenceValue = audio;
+            so.FindProperty("nextClip").objectReferenceValue = PlaceholderClip("SFX_Tutorial_Next");
+            so.FindProperty("completeClip").objectReferenceValue = PlaceholderClip("SFX_Tutorial_Complete");
+            SetArray(so.FindProperty("controllerRings"), ControllerRings());
+            so.ApplyModifiedPropertiesWithoutUndo();
+            return board;
+        }
+
+        /// <summary>
+        /// 実際のコントローラーのトリガーとトラックパッドの位置に出す光る輪(半径 0.025m、Unlit)。
+        /// 位置はコントローラーの子の Transform なので、ずれていれば Inspector で直す。左トリガー・左パッド・右トリガー・右パッドの順。
+        /// </summary>
+        private static GameObject[] ControllerRings()
+        {
+            Material glow = SceneBuildUtility.GetOrCreateMaterial(MaterialFolder, "C_HintGlow", "#FFD24A", true);
+            var rings = new GameObject[4];
+            Transform[] all = Object.FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            string[] controllers = { "Left Controller", "Right Controller" };
+            for (int hand = 0; hand < 2; hand++)
+            {
+                Transform controller = System.Array.Find(all, t => t.name == controllers[hand]);
+                if (controller == null)
+                {
+                    continue;
+                }
+
+                rings[hand * 2] = Ring(controller, "てびきの輪(トリガー)", new Vector3(0f, -0.035f, 0.03f), glow);
+                rings[hand * 2 + 1] = Ring(controller, "てびきの輪(パッド)", new Vector3(0f, 0.012f, -0.01f), glow);
+            }
+
+            return rings;
+        }
+
+        private static GameObject Ring(Transform controller, string name, Vector3 localPosition, Material material)
+        {
+            GameObject ring = SceneBuildUtility.CreatePrimitive(name, PrimitiveType.Cylinder, Vector3.zero, Vector3.one, material, false);
+            ring.transform.SetParent(controller, false);
+            ring.transform.localPosition = localPosition;
+            ring.transform.localScale = new Vector3(0.05f, 0.001f, 0.05f);
+            ring.GetComponent<Renderer>().shadowCastingMode = ShadowCastingMode.Off;
+            ring.SetActive(false);
+            return ring;
         }
 
         /// <summary>

@@ -81,13 +81,14 @@ namespace VRGame3.Hub.EditorTools
             BuildAmbient(root.transform, palms);
 
             UIBuildUtility.EnsureEventSystem();
-            BuildSportSign(root.transform, font, "ボウリングの看板", "ボウリング", SportIds.Bowling, "Bowling",
-                new Vector3(-SignX, 1.65f, 5f), "#FF7F6B");
+            var hints = new List<GameObject>();
+            hints.Add(BuildSportSign(root.transform, font, "ボウリングの看板", "ボウリング", SportIds.Bowling, "Bowling",
+                new Vector3(-SignX, 1.65f, 5f), "#FF7F6B"));
             // 卓球の看板は真ん中(docs/art-direction.md「M3 ハブの3枚目の看板」)
-            BuildSportSign(root.transform, font, "卓球の看板", "卓球", SportIds.TableTennis, "TableTennis",
-                new Vector3(0f, 1.65f, 5.6f), "#3AA7FF");
-            BuildSportSign(root.transform, font, "アーチェリーの看板", "アーチェリー", SportIds.Archery, "Archery",
-                new Vector3(SignX, 1.65f, 5f), "#6CC36A");
+            hints.Add(BuildSportSign(root.transform, font, "卓球の看板", "卓球", SportIds.TableTennis, "TableTennis",
+                new Vector3(0f, 1.65f, 5.6f), "#3AA7FF"));
+            hints.Add(BuildSportSign(root.transform, font, "アーチェリーの看板", "アーチェリー", SportIds.Archery, "Archery",
+                new Vector3(SignX, 1.65f, 5f), "#6CC36A"));
 
             Material arc = SceneBuildUtility.GetOrCreateArcMaterial(MaterialFolder, "H_TeleportArc");
             Material reticle = SceneBuildUtility.GetOrCreateMaterial(MaterialFolder, "H_Reticle", "#3AA7FF", true);
@@ -105,6 +106,19 @@ namespace VRGame3.Hub.EditorTools
             {
                 BuildSettingsSign(root.transform, font, settings);
             }
+
+            // はじめての案内と看板の札(M4 のてびき)
+            var tutorial = root.AddComponent<HubTutorial>();
+            var tutorialSo = new SerializedObject(tutorial);
+            tutorialSo.FindProperty("board").objectReferenceValue = Object.FindAnyObjectByType<TutorialBoard>();
+            SerializedProperty hintList = tutorialSo.FindProperty("signHints");
+            hintList.arraySize = hints.Count;
+            for (int i = 0; i < hints.Count; i++)
+            {
+                hintList.GetArrayElementAtIndex(i).objectReferenceValue = hints[i];
+            }
+
+            tutorialSo.ApplyModifiedPropertiesWithoutUndo();
 
             CommonSceneBuilder.EnsureSkillPointRules();
             EditorSceneManager.SaveScene(scene, ScenePath);
@@ -374,7 +388,8 @@ namespace VRGame3.Hub.EditorTools
         }
 
         /// <summary>種目の看板:柱2本・板・種目の色の帯と、種目名・ランク・ポイント・ベスト・「あそぶ」の Canvas。</summary>
-        private static void BuildSportSign(Transform root, TMP_FontAsset font, string name, string title, string sportId,
+        /// <summary>種目の看板を作り、てびきの札(「ゆびさして トリガー」、ふだんは隠す)を返す。</summary>
+        private static GameObject BuildSportSign(Transform root, TMP_FontAsset font, string name, string title, string sportId,
             string sceneName, Vector3 center, string bandHex)
         {
             var sign = new GameObject(name);
@@ -428,6 +443,16 @@ namespace VRGame3.Hub.EditorTools
             so.FindProperty("playButton").objectReferenceValue = playImage.GetComponent<Button>();
             so.FindProperty("playLabel").objectReferenceValue = playLabel;
             so.ApplyModifiedPropertiesWithoutUndo();
+
+            // てびきの札:板の下の端の下に「↑ ゆびさして トリガー」(「あそぶ」を指す)
+            GameObject hint = UIBuildUtility.CreateCanvas(sign.transform, "てびきの札", new Vector2(1400f, 220f), UIBuildUtility.PrimaryColor);
+            hint.transform.localPosition = new Vector3(0f, -1.05f, -0.06f);
+            hint.transform.localRotation = Quaternion.identity;
+            Object.DestroyImmediate(hint.GetComponent<UnityEngine.XR.Interaction.Toolkit.UI.TrackedDeviceGraphicRaycaster>());
+            UIBuildUtility.Label(hint.transform, "文字", "↑ ゆびさして トリガー", font, 130, Vector2.zero, new Vector2(1380f, 200f),
+                UIBuildUtility.TextDark);
+            hint.SetActive(false);
+            return hint;
         }
 
         private static string BandMaterialName(string hex)

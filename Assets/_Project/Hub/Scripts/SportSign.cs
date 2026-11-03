@@ -63,6 +63,8 @@ namespace VRGame3.Hub
         /// <summary>会場へ行く(「あそぶ」ボタンから呼ぶ)。</summary>
         public void Play()
         {
+            // 種目に1つ入ったら、ハブのてびき(看板の札)は見たことにする
+            SaveStore.MarkTutorialSeen(HubTutorial.Id);
             SceneTransition.Load(sceneName);
         }
 

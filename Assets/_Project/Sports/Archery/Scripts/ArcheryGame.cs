@@ -122,6 +122,7 @@ namespace VRGame3.Sports.Archery
             SaveStore.Changed += OnSettingsChanged;
             if (bow != null)
             {
+                bow.Nocked += OnNocked;
                 bow.Fired += OnFired;
                 bow.ArrowStopped = OnArrowStopped;
             }
@@ -137,6 +138,7 @@ namespace VRGame3.Sports.Archery
             SaveStore.Changed -= OnSettingsChanged;
             if (bow != null)
             {
+                bow.Nocked -= OnNocked;
                 bow.Fired -= OnFired;
             }
 
@@ -177,6 +179,7 @@ namespace VRGame3.Sports.Archery
 
             sheet = new ArcheryScoreSheet();
             GameSession.InProgress = false;
+            BeginTutorial();
             target.StartCoroutine(target.ShrinkArrows(0.01f));
             target.PlaceAt(DistanceOf(0), TargetHeight());
             scoreBoard.Refresh(sheet, DistanceOf(0));
@@ -201,6 +204,7 @@ namespace VRGame3.Sports.Archery
             challengeHits = 0;
             challengeSum = 0;
             GameSession.InProgress = false;
+            BeginTutorial();
             target.StartCoroutine(target.ShrinkArrows(0.01f));
             target.PlaceAt(CurrentDistance, TargetHeight());
             EquipBow();
@@ -288,14 +292,36 @@ namespace VRGame3.Sports.Archery
             bow.Equip(bowHand, drawHand, bowInteractor, drawInteractor, leftHanded);
         }
 
+        private void OnNocked()
+        {
+            TutorialBoard.Next(0);
+        }
+
+        /// <summary>てびき(初めてのときだけ):1 つがえる → 2 引いて放つ → 3 ねらい方。</summary>
+        private static void BeginTutorial()
+        {
+            bool left = SaveStore.Settings.leftHanded;
+            TutorialBoard.Begin("archery",
+                new[]
+                {
+                    "弓は自動で もちます。反対の手を\n弦のまんなかに近づけて トリガー",
+                    "トリガーを引いたまま うしろへ引いて、\nはなすと 矢がとぶ",
+                    "点線は 矢のとぶ向き。\n的のまんなかを ねらおう",
+                },
+                new[] { TutorialBoard.Button.Trigger, TutorialBoard.Button.Trigger, TutorialBoard.Button.None },
+                new[] { left, left, left });
+        }
+
         private void OnFired(Arrow arrow)
         {
+            TutorialBoard.Next(1);
             state = State.Flying;
             GameSession.InProgress = true;
         }
 
         private void OnArrowStopped(Arrow arrow, Arrow.Hit hit)
         {
+            TutorialBoard.Finish(2);
             if (state != State.Flying)
             {
                 return;

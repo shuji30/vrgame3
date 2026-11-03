@@ -174,11 +174,8 @@ namespace VRGame3.Sports.Bowling
                 return;
             }
 
-            // 毎ゲームの始めに新しいゲームにする(途中のゲームから「はじめに」を出し直したときも)
-            if (game.IsGameOver || mode != SportMode.Solo || TurnSession.Active || game.Sheet == null || game.Sheet.GetRolls(0).Count > 0)
-            {
-                game.StartSelectedMode();
-            }
+            // 毎ゲームの始めに新しいゲームにする(途中のゲームから「はじめに」を出し直したときも。てびきもここで始める)
+            game.StartSelectedMode();
 
             game.SetInputLocked(false);
         }

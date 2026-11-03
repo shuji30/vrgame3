@@ -235,6 +235,7 @@ namespace VRGame3.Sports.Bowling
         /// </summary>
         public void StartSelectedMode()
         {
+            BeginTutorial();
             SportMode mode = modeSelector != null ? modeSelector.Mode : SportMode.Solo;
             if (mode == SportMode.Turns && !TurnSession.Active)
             {
@@ -260,6 +261,7 @@ namespace VRGame3.Sports.Bowling
         public void StartChallenge(string id)
         {
             NewGame();
+            BeginTutorial();
             challengeId = id;
             challengeThrows = 0;
             challengeFrames = 0;
@@ -270,6 +272,21 @@ namespace VRGame3.Sports.Bowling
 
             SetInputLocked(false);
             ShowChallengeBoard();
+        }
+
+        /// <summary>てびき(初めてのときだけ):1 ボールを持つ → 2 投げる → 3 スコアの見方。</summary>
+        private static void BeginTutorial()
+        {
+            bool left = SaveStore.Settings.leftHanded;
+            TutorialBoard.Begin("bowling",
+                new[]
+                {
+                    "ボールに手を近づけて、\nトリガーを引いたまま もつ",
+                    "うでを ふって、レーンの方で\nトリガーを はなす",
+                    "たおしたピンの数がスコアになる。\n10フレーム あそぼう",
+                },
+                new[] { TutorialBoard.Button.Trigger, TutorialBoard.Button.Trigger, TutorialBoard.Button.None },
+                new[] { left, left, left });
         }
 
         // 10番ピン(利き手が左なら7番)
@@ -328,6 +345,7 @@ namespace VRGame3.Sports.Bowling
 
         private void OnBallGrabbed(SelectEnterEventArgs args)
         {
+            TutorialBoard.Next(0);
             // 「はじめに」パネルがないシーン向け:終わったあとにボールを掴むと新しいゲーム
             if (state == State.GameOver && restartOnGrab && !inputLocked)
             {
@@ -356,6 +374,7 @@ namespace VRGame3.Sports.Bowling
             rescued = false;
             pinSetter.MarkStandingPins();
             state = State.Rolling;
+            TutorialBoard.Next(1);
             // 投げた時点でゲームの途中(メニューからハブへもどるときに確認を出す)
             GameSession.InProgress = true;
         }
@@ -472,6 +491,7 @@ namespace VRGame3.Sports.Bowling
         /// </summary>
         private void RecordRoll()
         {
+            TutorialBoard.Finish(2);
             int frame = sheet.CurrentFrame;
             int rollIndex = sheet.GetRolls(frame).Count;
             int knocked = pinSetter.CountKnockedSinceMark();
