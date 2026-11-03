@@ -6,7 +6,7 @@ namespace VRGame3.Sports.Bowling
 {
     /// <summary>
     /// 投球の結果に合わせた見た目の演出。docs/art-direction.md 7.2。
-    /// ・ストライク:ピン置き場から紙吹雪、倒れたピンが順に光る(0.5秒で上げて1秒で戻す)
+    /// ・ストライク:ピン置き場から紙吹雪、倒れたピンが順に光る(0.5秒で上げて1秒で戻す)、レーン脇の明かりが奥から手前へ流れる
     /// ・スペア:紙吹雪を少なめ・色違いで
     /// ・ガター(1本も倒れない):ピットで小さな煙
     /// カメラは動かさず、演出はすべてプレイヤーから 10m 以上離れたピン置き場で起こす。
@@ -27,6 +27,9 @@ namespace VRGame3.Sports.Bowling
 
         [Tooltip("ガターの小さな煙")]
         [SerializeField] private ParticleSystem gutterPuff;
+
+        [Tooltip("ストライクでレーン脇の明かりを奥から手前へ流す演出")]
+        [SerializeField] private LaneLightSweep lightSweep;
 
         [Header("ピンの光")]
         [Tooltip("光が最大になるまでの秒数")]
@@ -66,6 +69,10 @@ namespace VRGame3.Sports.Bowling
             {
                 Play(strikeConfetti);
                 GlowKnockedPins();
+                if (lightSweep != null)
+                {
+                    lightSweep.Play();
+                }
             }
             else if (symbol == "/")
             {

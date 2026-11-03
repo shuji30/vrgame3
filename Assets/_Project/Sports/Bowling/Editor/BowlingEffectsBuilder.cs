@@ -13,7 +13,7 @@ namespace VRGame3.Sports.Bowling.EditorTools
     internal static class BowlingEffectsBuilder
     {
         public static void AddEffects(GameObject root, BowlingGame game, PinSetter pinSetter, Material pinMaterial,
-            string materialFolder, float laneX, float pinDeckZ)
+            string materialFolder, float laneX, float pinDeckZ, float lampOffsetX, float lampY)
         {
             EnableGlow(pinMaterial);
             Material particle = GetOrCreateParticleMaterial(materialFolder);
@@ -28,6 +28,7 @@ namespace VRGame3.Sports.Bowling.EditorTools
             ParticleSystem spare = Confetti(effects.transform, "スペアの紙吹雪", confettiPosition, 70, particle,
                 new[] { "#3AA7FF", "#7FE3D6", "#FFFDF7" });
             ParticleSystem gutter = Puff(effects.transform, "ガターの煙", new Vector3(laneX, -0.3f, pinDeckZ + 1.5f), particle);
+            LaneLightSweep sweep = LaneLamps(effects.transform, materialFolder, laneX, lampOffsetX, lampY);
 
             var component = root.AddComponent<BowlingEffects>();
             var so = new SerializedObject(component);
@@ -36,7 +37,46 @@ namespace VRGame3.Sports.Bowling.EditorTools
             so.FindProperty("strikeConfetti").objectReferenceValue = strike;
             so.FindProperty("spareConfetti").objectReferenceValue = spare;
             so.FindProperty("gutterPuff").objectReferenceValue = gutter;
+            so.FindProperty("lightSweep").objectReferenceValue = sweep;
             so.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        /// <summary>
+        /// レーン脇(左右の横の板の上)に小さな明かりを 1.5m おきに並べる。実際のライトは使わず発光だけで光らせる。
+        /// </summary>
+        private static LaneLightSweep LaneLamps(Transform parent, string materialFolder, float laneX, float offsetX, float y)
+        {
+            Material lampMaterial = SceneBuildUtility.GetOrCreateMaterial(materialFolder, "B_Lamp", "#FFF1C9", false);
+            EnableGlow(lampMaterial);
+
+            var group = new GameObject("レーン脇の明かり");
+            group.transform.SetParent(parent, false);
+            var lamps = new System.Collections.Generic.List<Renderer>();
+            for (float z = 1.5f; z <= 16.6f; z += 1.5f)
+            {
+                for (int side = -1; side <= 1; side += 2)
+                {
+                    GameObject lamp = SceneBuildUtility.CreatePrimitive($"明かり({(side < 0 ? "左" : "右")} Z{z:0.0})",
+                        PrimitiveType.Cube, new Vector3(laneX + side * offsetX, y, z), new Vector3(0.03f, 0.012f, 0.25f),
+                        lampMaterial, false);
+                    lamp.transform.SetParent(group.transform, true);
+                    var renderer = lamp.GetComponent<Renderer>();
+                    renderer.shadowCastingMode = ShadowCastingMode.Off;
+                    lamps.Add(renderer);
+                }
+            }
+
+            var sweep = group.AddComponent<LaneLightSweep>();
+            var so = new SerializedObject(sweep);
+            SerializedProperty list = so.FindProperty("lamps");
+            list.arraySize = lamps.Count;
+            for (int i = 0; i < lamps.Count; i++)
+            {
+                list.GetArrayElementAtIndex(i).objectReferenceValue = lamps[i];
+            }
+
+            so.ApplyModifiedPropertiesWithoutUndo();
+            return sweep;
         }
 
         /// <summary>ピンのマテリアルの発光を有効にしておく(普段は黒=光らない。演出のときだけ色を入れる)。</summary>

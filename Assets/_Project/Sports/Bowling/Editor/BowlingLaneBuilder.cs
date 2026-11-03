@@ -36,6 +36,7 @@ namespace VRGame3.Sports.Bowling.EditorTools
         private const float PitEnd = 21.5f;
         private const float PitDepth = 0.6f;
         private const float SideBoardThickness = 0.05f;
+        private const float SideBoardTop = 0.15f;
         private const float PinSpacing = 0.305f;
         private const float Bottom = -PitDepth - 0.1f;
 
@@ -159,7 +160,8 @@ namespace VRGame3.Sports.Bowling.EditorTools
             BowlingAudioBuilder.AddGameSounds(root, game, new Vector3(RidgeX, 2.85f, 2.5f),
                 RackPosition + new Vector3(0f, RackHeight, 0f));
             BowlingAudioBuilder.AddPinCrash(root, balls, new Vector3(PlayerLaneX, 0.2f, HeadPinDistance + 0.5f));
-            BowlingEffectsBuilder.AddEffects(root, game, pinSetter, palette.Pin, MaterialFolder, PlayerLaneX, HeadPinDistance + 0.5f);
+            BowlingEffectsBuilder.AddEffects(root, game, pinSetter, palette.Pin, MaterialFolder, PlayerLaneX, HeadPinDistance + 0.5f,
+                (GutterOuter + LaneOuter) / 2f, SideBoardTop + 0.006f);
 
             Material arc = SceneBuildUtility.GetOrCreateArcMaterial(MaterialFolder, "B_TeleportArc");
             List<string> warnings = SceneBuildUtility.SetUpXROrigin(arc, palette.Reticle, PlayerPosition, Quaternion.identity,
@@ -230,7 +232,7 @@ namespace VRGame3.Sports.Bowling.EditorTools
 
                 // 横の板:ピンの手前までは低く、ピン置き場の横(キックバック)は高く
                 Block(parent, $"横の板({label})", new Vector3(Mathf.Min(gutter, outer), Bottom, 0f),
-                    new Vector3(Mathf.Max(gutter, outer), 0.15f, 17f), palette.Wood, lanePhysics);
+                    new Vector3(Mathf.Max(gutter, outer), SideBoardTop, 17f), palette.Wood, lanePhysics);
                 Block(parent, $"キックバック({label})", new Vector3(Mathf.Min(gutter, outer), Bottom, 17f),
                     new Vector3(Mathf.Max(gutter, outer), 0.7f, InnerMaxZ), palette.Wood, cushionPhysics);
             }
