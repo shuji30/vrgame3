@@ -100,6 +100,8 @@ namespace VRGame3.Common.EditorTools
                 canvasObject.AddComponent<Image>().color = background;
             }
 
+            // 出すときに 0.9 → 1.0 倍に広げる(6.4)
+            canvasObject.AddComponent<PanelPop>();
             return canvasObject;
         }
 
