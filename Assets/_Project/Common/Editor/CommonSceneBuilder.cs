@@ -310,6 +310,24 @@ namespace VRGame3.Common.EditorTools
             return panel;
         }
 
+        /// <summary>
+        /// 腕前ポイントの決まりのアセット(Resources/SkillPointRules.asset)を、無ければ既定値で作る。
+        /// Inspector で基準スコアなどを調整できるようにするため。
+        /// </summary>
+        public static void EnsureSkillPointRules()
+        {
+            const string folder = "Assets/_Project/Common/Resources";
+            const string path = folder + "/SkillPointRules.asset";
+            if (AssetDatabase.LoadAssetAtPath<SkillPointRules>(path) != null)
+            {
+                return;
+            }
+
+            SceneBuildUtility.EnsureFolder(folder);
+            AssetDatabase.CreateAsset(ScriptableObject.CreateInstance<SkillPointRules>(), path);
+            AssetDatabase.SaveAssets();
+        }
+
         /// <summary>Art/Audio/Placeholder の仮の音。無ければ null。</summary>
         public static AudioClip PlaceholderClip(string name)
         {

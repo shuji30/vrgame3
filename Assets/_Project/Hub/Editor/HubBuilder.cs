@@ -100,6 +100,7 @@ namespace VRGame3.Hub.EditorTools
                 BuildSettingsSign(root.transform, font, settings);
             }
 
+            CommonSceneBuilder.EnsureSkillPointRules();
             EditorSceneManager.SaveScene(scene, ScenePath);
             SceneBuildUtility.AddSceneToBuildSettings(ScenePath, makeFirst: true);
 
