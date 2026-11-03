@@ -96,6 +96,7 @@ namespace VRGame3.Common.EditorTools
             var time = new GameObject("時間帯");
             time.transform.SetParent(root.transform, false);
             TimeOfDayPresets.Fill(time.AddComponent<TimeOfDayApplier>());
+            TimeOfDayPresets.TagAmbient(time.transform, PlaceholderClip("AMB_Insects_Loop"), 0.04f);
             return null;
         }
 

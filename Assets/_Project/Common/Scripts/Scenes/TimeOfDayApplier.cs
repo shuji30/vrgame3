@@ -67,6 +67,18 @@ namespace VRGame3.Common
             [Tooltip("映り込みの強さ(Reflection Intensity)")]
             public float reflectionIntensity = 1f;
 
+            [Tooltip("環境音の倍率:波")]
+            public float waveScale = 1f;
+
+            [Tooltip("環境音の倍率:鳥の音量")]
+            public float birdVolumeScale = 1f;
+
+            [Tooltip("環境音の倍率:鳥の間隔(小さいほどよく鳴く)")]
+            public float birdIntervalScale = 1f;
+
+            [Tooltip("環境音の倍率:虫(0 なら鳴かない)")]
+            public float insectsScale;
+
             [Tooltip("霧の色")]
             public Color fogColor = new Color(0.8f, 0.9f, 0.97f);
 
@@ -219,6 +231,32 @@ namespace VRGame3.Common
             RenderSettings.fogStartDistance = p.fogStart;
             RenderSettings.fogEndDistance = p.fogEnd;
             DynamicGI.UpdateEnvironment();
+            ApplySounds(p);
+        }
+
+        /// <summary>時間帯ごとの環境音(docs/art-direction.md 8.1.1)。</summary>
+        private void ApplySounds(Preset p)
+        {
+            foreach (SoundCategory category in FindObjectsByType<SoundCategory>(FindObjectsSortMode.None))
+            {
+                switch (category.SoundKind)
+                {
+                    case SoundCategory.Kind.Wave:
+                        category.SetTimeScale(p.waveScale);
+                        break;
+                    case SoundCategory.Kind.Bird:
+                        category.SetTimeScale(p.birdVolumeScale);
+                        if (category.TryGetComponent(out RandomOneShot birds))
+                        {
+                            birds.SetIntervalScale(p.birdIntervalScale);
+                        }
+
+                        break;
+                    case SoundCategory.Kind.Insects:
+                        category.SetTimeScale(p.insectsScale);
+                        break;
+                }
+            }
         }
 
         private static void SetIfHas(Material material, string property, Color value)

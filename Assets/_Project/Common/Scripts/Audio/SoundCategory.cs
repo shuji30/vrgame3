@@ -11,6 +11,33 @@ namespace VRGame3.Common
     [RequireComponent(typeof(AudioSource))]
     public class SoundCategory : MonoBehaviour
     {
+        /// <summary>環境音の種類(時間帯で音量を変えるため。docs/art-direction.md 8.1.1)。</summary>
+        public enum Kind
+        {
+            Other,
+            Wave,
+            Bird,
+            Wind,
+            Insects,
+        }
+
+        [Tooltip("環境音の種類(時間帯で音量を変える)")]
+        [SerializeField] private Kind kind = Kind.Other;
+
+        private float timeScale = 1f;
+
+        public Kind SoundKind => kind;
+
+        /// <summary>時間帯による音量の倍率。</summary>
+        public void SetTimeScale(float scale)
+        {
+            timeScale = Mathf.Max(0f, scale);
+            Apply();
+        }
+
+        /// <summary>いま有効な、環境音・BGM の音源。</summary>
+        public static IReadOnlyList<SoundCategory> All => Active;
+
         private static readonly List<SoundCategory> Active = new List<SoundCategory>();
         private static float ambientFactor = 1f;
         private static float duck = 1f;
@@ -39,7 +66,7 @@ namespace VRGame3.Common
         {
             if (source != null)
             {
-                source.volume = baseVolume * ambientFactor * duck;
+                source.volume = baseVolume * ambientFactor * duck * timeScale;
             }
         }
 

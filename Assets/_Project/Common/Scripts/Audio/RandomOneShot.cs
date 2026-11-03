@@ -31,6 +31,13 @@ namespace VRGame3.Common
 
         private AudioSource source;
         private float nextTime;
+        private float intervalScale = 1f;
+
+        /// <summary>鳴らす間隔の倍率(時間帯で変える。1 = そのまま)。</summary>
+        public void SetIntervalScale(float scale)
+        {
+            intervalScale = Mathf.Max(0.1f, scale);
+        }
         private int nextClip;
 
         private void Awake()
@@ -69,7 +76,7 @@ namespace VRGame3.Common
 
         private void ScheduleNext()
         {
-            nextTime = Time.time + Random.Range(minInterval, maxInterval);
+            nextTime = Time.time + Random.Range(minInterval, maxInterval) * intervalScale;
         }
     }
 }
