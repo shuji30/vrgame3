@@ -26,19 +26,35 @@ namespace VRGame3.Sports.TableTennis
         }
 
         [Header("部品")]
+        [Tooltip("ボール")]
         [SerializeField] private PingPongBall ball;
+
+        [Tooltip("ラケット")]
         [SerializeField] private Racket racket;
+
+        [Tooltip("CPU")]
         [SerializeField] private TTCpuPlayer cpu;
+
+        [Tooltip("スコア板")]
         [SerializeField] private TTScoreBoard scoreBoard;
+
+        [Tooltip("結果の表示")]
         [SerializeField] private ResultPanel resultPanel;
 
         [Tooltip("台の見た目と当たりの親(身長に合わせて高さを変える)。この物の位置が台の上面の中心")]
         [SerializeField] private Transform table;
 
         [Header("手")]
+        [Tooltip("左のコントローラー")]
         [SerializeField] private Transform leftController;
+
+        [Tooltip("右のコントローラー")]
         [SerializeField] private Transform rightController;
+
+        [Tooltip("左手の Interactor(振動を送る)")]
         [SerializeField] private XRBaseInputInteractor leftInteractor;
+
+        [Tooltip("右手の Interactor(振動を送る)")]
         [SerializeField] private XRBaseInputInteractor rightInteractor;
 
         [Header("ルール")]

@@ -12,6 +12,7 @@ namespace VRGame3.Sports.Archery
     public class ArcheryScoreBoard : MonoBehaviour
     {
         [Header("小型スコア板")]
+        [Tooltip("「ラウンド2 20m」の文字")]
         [SerializeField] private TMP_Text roundText;
 
         [Tooltip("6本の点の文字")]
@@ -20,8 +21,13 @@ namespace VRGame3.Sports.Archery
         [Tooltip("6本の点の枠")]
         [SerializeField] private Image[] slotImages = new Image[ArcheryScoreSheet.ArrowsPerRound];
 
+        [Tooltip("ラウンドごとの合計の文字")]
         [SerializeField] private TMP_Text roundsText;
+
+        [Tooltip("合計の文字")]
         [SerializeField] private TMP_Text totalText;
+
+        [Tooltip("残りの本数の文字")]
         [SerializeField] private TMP_Text leftText;
 
         [Header("的の横の点数")]
@@ -38,14 +44,26 @@ namespace VRGame3.Sports.Archery
         [Tooltip("空中に出す「ラウンド2 20m」")]
         [SerializeField] private TextMeshPro bannerText;
 
+        [Tooltip("ラウンドの見出しを出しておく秒数")]
         [SerializeField] private float bannerTime = 2f;
 
         [Header("色")]
+        [Tooltip("点の枠の色")]
         [SerializeField] private Color slotColor = new Color32(0x6C, 0x8F, 0xCF, 0xFF);
+
+        [Tooltip("次に射つ枠の色")]
         [SerializeField] private Color currentSlotColor = new Color32(0xFF, 0xD2, 0x4A, 0xFF);
+
+        [Tooltip("普通の点の文字の色")]
         [SerializeField] private Color normalTextColor = new Color32(0xFF, 0xFD, 0xF7, 0xFF);
+
+        [Tooltip("10点の文字の色")]
         [SerializeField] private Color tenColor = new Color32(0xFF, 0xD2, 0x4A, 0xFF);
+
+        [Tooltip("X の文字の色")]
         [SerializeField] private Color xColor = new Color32(0xFF, 0x8A, 0x3D, 0xFF);
+
+        [Tooltip("外れの文字の色")]
         [SerializeField] private Color missColor = new Color32(0xB8, 0xB4, 0xC8, 0xFF);
 
         private Coroutine hitRoutine;

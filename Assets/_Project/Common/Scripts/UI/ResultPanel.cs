@@ -14,13 +14,19 @@ namespace VRGame3.Common
         [Tooltip("パネル全体(表示・非表示を切り替える)")]
         [SerializeField] private GameObject panelRoot;
 
+        [Tooltip("合計の文字")]
         [SerializeField] private TMP_Text totalText;
 
         [Tooltip("「ベスト更新!」の札")]
         [SerializeField] private GameObject newBestBadge;
 
+        [Tooltip("ベストの文字")]
         [SerializeField] private TMP_Text bestText;
+
+        [Tooltip("ランクのメダル")]
         [SerializeField] private RankMedal medal;
+
+        [Tooltip("ポイントの文字")]
         [SerializeField] private TMP_Text pointsText;
 
         [Tooltip("「ランクアップ!」の文字")]
@@ -31,10 +37,15 @@ namespace VRGame3.Common
 
         [Tooltip("結果のジングル")]
         [SerializeField] private AudioSource audioSource;
+
+        [Tooltip("結果のジングル")]
         [SerializeField] private AudioClip resultClip;
+
+        [Tooltip("ランクアップの音")]
         [SerializeField] private AudioClip rankUpClip;
 
         [Range(0f, 1f)]
+        [Tooltip("音量(0〜1)")]
         [SerializeField] private float volume = 0.4f;
 
         [Tooltip("ベスト更新かランクアップのときに出す紙吹雪(なくてもよい)")]

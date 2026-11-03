@@ -17,6 +17,7 @@ namespace VRGame3.Sports.Archery
         [Tooltip("パネル全体(表示・非表示を切り替える)")]
         [SerializeField] private GameObject panelRoot;
 
+        [Tooltip("身長の数字")]
         [SerializeField] private TMP_Text heightText;
 
         [Tooltip("選択肢のボタン:左利き・右利き・補助オン・補助オフの順")]
@@ -29,9 +30,16 @@ namespace VRGame3.Sports.Archery
         [SerializeField] private int heightStep = 5;
 
         [Header("色")]
+        [Tooltip("選んでいるボタンの色")]
         [SerializeField] private Color selectedColor = new Color32(0xFF, 0xD2, 0x4A, 0xFF);
+
+        [Tooltip("選んでいないボタンの色")]
         [SerializeField] private Color unselectedColor = new Color32(0x6C, 0x8F, 0xCF, 0xFF);
+
+        [Tooltip("選んでいるボタンの文字の色")]
         [SerializeField] private Color selectedTextColor = new Color32(0x3A, 0x35, 0x50, 0xFF);
+
+        [Tooltip("選んでいないボタンの文字の色")]
         [SerializeField] private Color unselectedTextColor = new Color32(0xFF, 0xFD, 0xF7, 0xFF);
 
         private static readonly string[] ChoiceLabels = { "左", "右", "オン", "オフ" };

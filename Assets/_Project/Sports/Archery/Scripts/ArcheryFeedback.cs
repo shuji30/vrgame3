@@ -13,7 +13,10 @@ namespace VRGame3.Sports.Archery
         [Tooltip("進行役")]
         [SerializeField] private ArcheryGame game;
 
+        [Tooltip("的")]
         [SerializeField] private ArcheryTarget target;
+
+        [Tooltip("スコア板")]
         [SerializeField] private ArcheryScoreBoard scoreBoard;
 
         [Header("音")]
@@ -23,18 +26,37 @@ namespace VRGame3.Sports.Archery
         [Tooltip("的のまわりで鳴らす AudioSource(チャイム・ジングル)")]
         [SerializeField] private AudioSource targetSource;
 
+        [Tooltip("的に刺さる音(ランダムに1つ)")]
         [SerializeField] private AudioClip[] targetHitClips = new AudioClip[0];
+
+        [Tooltip("外れて地面に落ちる音(ランダムに1つ)")]
         [SerializeField] private AudioClip[] groundHitClips = new AudioClip[0];
+
+        [Tooltip("10点のチャイム")]
         [SerializeField] private AudioClip tenClip;
+
+        [Tooltip("X のジングル")]
         [SerializeField] private AudioClip xClip;
+
+        [Tooltip("ラウンドの終わりの音")]
         [SerializeField] private AudioClip roundEndClip;
+
+        [Tooltip("的が出る音")]
         [SerializeField] private AudioClip targetAppearClip;
 
         [Tooltip("音量(刺さる / 外れ / 10点 / X / ラウンドの終わり・的が出る)。8.5 の目安")]
         [SerializeField] private float hitVolume = 0.4f;
+
+        [Tooltip("外れの音の音量(0〜1)")]
         [SerializeField] private float groundVolume = 0.2f;
+
+        [Tooltip("10点のチャイムの音量(0〜1)")]
         [SerializeField] private float tenVolume = 0.32f;
+
+        [Tooltip("X のジングルの音量(0〜1)")]
         [SerializeField] private float xVolume = 0.5f;
+
+        [Tooltip("ラウンドの終わり・的が出る音の音量(0〜1)")]
         [SerializeField] private float roundVolume = 0.3f;
 
         [Header("演出")]
@@ -51,7 +73,10 @@ namespace VRGame3.Sports.Archery
         [SerializeField] private ParticleSystem grass;
 
         [Header("X の祝福の振動")]
+        [Tooltip("X の祝福の振動の強さ(0〜1)")]
         [SerializeField] private float xHapticAmplitude = 0.4f;
+
+        [Tooltip("X の祝福の振動の長さ(秒)")]
         [SerializeField] private float xHapticDuration = 0.15f;
 
         private void OnEnable()

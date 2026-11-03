@@ -23,9 +23,16 @@ namespace VRGame3.Sports.Archery
         }
 
         [Header("部品")]
+        [Tooltip("弓")]
         [SerializeField] private Bow bow;
+
+        [Tooltip("的")]
         [SerializeField] private ArcheryTarget target;
+
+        [Tooltip("スコア板")]
         [SerializeField] private ArcheryScoreBoard scoreBoard;
+
+        [Tooltip("結果の表示")]
         [SerializeField] private ResultPanel resultPanel;
 
         [Header("手")]
