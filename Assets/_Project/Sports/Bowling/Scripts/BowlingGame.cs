@@ -78,6 +78,27 @@ namespace VRGame3.Sports.Bowling
         [Tooltip("レーンの中心から左右にこの距離(m)より離れているときは救済しない")]
         [SerializeField] private float rescueMaxLateral = 0.7f;
 
+        [Header("モード(M3)")]
+        [Tooltip("「はじめに」パネルのモードの行")]
+        [SerializeField] private ModeSelector modeSelector;
+
+        [Tooltip("交代の案内・順位表・チャレンジに使うパネル")]
+        [SerializeField] private ChoicePanel choicePanel;
+
+        [Tooltip("10フレームのあと、交代の案内やチャレンジの結果を出すまでの秒数")]
+        [SerializeField] private float modeResultDelay = 3f;
+
+        [Header("チャレンジ(docs/plan.md「チャレンジ」)")]
+        [Tooltip("ぴったり7本:倒す本数・投げられる回数")]
+        [SerializeField] private int sevenTarget = 7;
+        [SerializeField] private int sevenThrows = 5;
+
+        [Tooltip("スペアをねらえ:フレームの数")]
+        [SerializeField] private int spareFrames = 3;
+
+        [Tooltip("はしっこの1本:投げられる回数")]
+        [SerializeField] private int cornerThrows = 3;
+
         [Header("片付け")]
         [Tooltip("記録してから、倒れたピンを片付けてボールを戻すまで待つ秒数")]
         [SerializeField] private float clearDelay = 1f;
@@ -97,6 +118,9 @@ namespace VRGame3.Sports.Bowling
         /// <summary>10フレームが終わったとき。引数は合計点。</summary>
         public event Action<GameRecordResult> GameFinished;
 
+        /// <summary>「はじめに」パネルを出してほしいとき(交代の案内・チャレンジの「もどる」から)。</summary>
+        public event Action WaitingForStart;
+
         private BowlingScoreSheet sheet;
         private State state;
         private ThrowableObject currentBall;
@@ -109,6 +133,9 @@ namespace VRGame3.Sports.Bowling
         private float clearTimer;
         private bool resetRackOnClear;
         private bool inputLocked;
+        private string challengeId;
+        private int challengeThrows;
+        private int challengeFrames;
 
         /// <summary>投げるボール。</summary>
         public IReadOnlyList<ThrowableObject> Balls => balls;
@@ -182,12 +209,61 @@ namespace VRGame3.Sports.Bowling
         [ContextMenu("新しいゲーム")]
         public void NewGame()
         {
+            challengeId = null;
             sheet = new BowlingScoreSheet();
             pinSetter.ResetRack();
             state = State.Ready;
             currentBall = null;
             GameSession.InProgress = false;
             scoreBoard.Refresh(sheet);
+        }
+
+        /// <summary>
+        /// 「はじめに」パネルの「はじめる」から、選んだモードでゲームを始める(チャレンジは課題の一覧から)。
+        /// </summary>
+        public void StartSelectedMode()
+        {
+            SportMode mode = modeSelector != null ? modeSelector.Mode : SportMode.Solo;
+            if (mode == SportMode.Turns && !TurnSession.Active)
+            {
+                TurnSession.Begin(modeSelector.Choice.PlayerCount);
+            }
+
+            NewGame();
+        }
+
+        /// <summary>チャレンジの一覧を出す。</summary>
+        public void ShowChallengeList()
+        {
+            ModeFlow.ShowChallengeList(choicePanel, SportIds.Bowling, StartChallenge, () => WaitingForStart?.Invoke());
+        }
+
+        /// <summary>チャレンジを始める。</summary>
+        public void StartChallenge(string id)
+        {
+            NewGame();
+            challengeId = id;
+            challengeThrows = 0;
+            challengeFrames = 0;
+            if (id == "bowling.corner")
+            {
+                pinSetter.SetUpSingle(CornerPinIndex);
+            }
+
+            SetInputLocked(false);
+            ShowChallengeBoard();
+        }
+
+        // 10番ピン(利き手が左なら7番)
+        private static int CornerPinIndex => SaveStore.Settings.leftHanded ? 6 : 9;
+
+        private void ShowChallengeBoard()
+        {
+            ChallengeCatalog.Entry entry = ChallengeCatalog.Find(challengeId);
+            string left = challengeId == "bowling.seven" ? $"のこり {sevenThrows - challengeThrows}投"
+                : challengeId == "bowling.spare" ? $"のこり {spareFrames - challengeFrames}フレーム"
+                : $"のこり {cornerThrows - challengeThrows}投";
+            scoreBoard.ShowChallenge(entry?.Name, left);
         }
 
         /// <summary>
@@ -382,6 +458,12 @@ namespace VRGame3.Sports.Bowling
             int rollIndex = sheet.GetRolls(frame).Count;
             int knocked = pinSetter.CountKnockedSinceMark();
 
+            if (challengeId != null)
+            {
+                RecordChallengeRoll(frame, rollIndex, knocked);
+                return;
+            }
+
             resetRackOnClear = sheet.AddRoll(knocked);
             // 1投でもしたらゲームの途中(メニューからハブへもどるときに確認を出す)
             GameSession.InProgress = !sheet.IsGameOver;
@@ -409,12 +491,60 @@ namespace VRGame3.Sports.Bowling
             state = State.Clearing;
         }
 
+        /// <summary>チャレンジの1投。クリアか失敗が決まったら結果を出す。</summary>
+        private void RecordChallengeRoll(int frame, int rollIndex, int knocked)
+        {
+            challengeThrows++;
+            bool cleared = false;
+            bool failed = false;
+            string symbol = knocked == 0 ? "-" : knocked.ToString();
+            switch (challengeId)
+            {
+                case "bowling.seven":
+                    cleared = knocked == sevenTarget;
+                    failed = !cleared && challengeThrows >= sevenThrows;
+                    resetRackOnClear = true;
+                    break;
+                case "bowling.spare":
+                    resetRackOnClear = sheet.AddRoll(knocked);
+                    symbol = sheet.GetRollSymbol(frame, rollIndex);
+                    cleared = symbol == "X" || symbol == "/";
+                    if (sheet.CurrentFrame != frame)
+                    {
+                        challengeFrames++;
+                    }
+
+                    failed = !cleared && challengeFrames >= spareFrames;
+                    break;
+                default:
+                    cleared = knocked >= 1;
+                    failed = !cleared && challengeThrows >= cornerThrows;
+                    resetRackOnClear = true;
+                    break;
+            }
+
+            RollRecorded?.Invoke(frame, rollIndex, knocked, symbol);
+            scoreBoard.ShowMessage(cleared ? "クリア!" : knocked.ToString());
+            RestReminder.AtBreak();
+            ShowChallengeBoard();
+            challengeResult = cleared ? 1 : failed ? -1 : 0;
+            clearTimer = clearDelay;
+            state = State.Clearing;
+        }
+
+        // チャレンジの結果(1 クリア / -1 失敗 / 0 続ける)。片付けたあとに使う
+        private int challengeResult;
+
         /// <summary>
         /// 倒れたピンを片付けるか10本を並べ直し、ボールを戻して次の投球を待つ。
         /// </summary>
         private void ClearPins()
         {
-            if (resetRackOnClear)
+            if (resetRackOnClear && challengeId == "bowling.corner")
+            {
+                pinSetter.SetUpSingle(CornerPinIndex);
+            }
+            else if (resetRackOnClear)
             {
                 pinSetter.ResetRack();
             }
@@ -426,6 +556,37 @@ namespace VRGame3.Sports.Bowling
             ReturnBall(currentBall);
             currentBall = null;
             BallReturned?.Invoke();
+
+            if (challengeId != null)
+            {
+                if (challengeResult == 0)
+                {
+                    state = State.Ready;
+                    return;
+                }
+
+                state = State.GameOver;
+                GameSession.InProgress = false;
+                string id = challengeId;
+                bool cleared = challengeResult > 0;
+                string detail = id == "bowling.spare" ? $"{challengeFrames}フレーム目" : $"{challengeThrows}投目";
+                SetInputLocked(true);
+                ModeFlow.ShowChallengeResult(choicePanel, id, cleared, cleared ? $"{detail}でクリア" : detail,
+                    () => StartChallenge(id), ShowChallengeList);
+                return;
+            }
+
+            if (sheet.IsGameOver && TurnSession.Active)
+            {
+                // 交代プレイは記録しない。スコアを出してから次の人へ
+                state = State.GameOver;
+                GameSession.InProgress = false;
+                int turnTotal = sheet.GetTotalScore();
+                scoreBoard.ShowMessage($"{TurnSession.Label(TurnSession.Current)}\n{turnTotal}");
+                SetInputLocked(true);
+                StartCoroutine(FinishTurnLater(turnTotal));
+                return;
+            }
 
             if (sheet.IsGameOver)
             {
@@ -440,6 +601,12 @@ namespace VRGame3.Sports.Bowling
             {
                 state = State.Ready;
             }
+        }
+
+        private System.Collections.IEnumerator FinishTurnLater(int total)
+        {
+            yield return new WaitForSeconds(modeResultDelay);
+            ModeFlow.FinishTurn(choicePanel, total, "点", () => WaitingForStart?.Invoke(), () => WaitingForStart?.Invoke());
         }
 
         private static void ReturnBall(ThrowableObject ball)

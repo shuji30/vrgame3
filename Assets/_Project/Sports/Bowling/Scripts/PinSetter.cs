@@ -26,13 +26,27 @@ namespace VRGame3.Sports.Bowling
             }
         }
 
+        /// <summary>1本だけを立て、ほかは片付ける(チャレンジ「はしっこの1本」)。index は 0 始まり(10番ピンは 9)。</summary>
+        public void SetUpSingle(int index)
+        {
+            ResetRack();
+            for (int i = 0; i < pins.Count; i++)
+            {
+                if (i != index)
+                {
+                    pins[i].Remove();
+                }
+            }
+        }
+
         /// <summary>投げる前に呼び、いま立っているピンを覚える。</summary>
         public void MarkStandingPins()
         {
             standingAtStart.Clear();
             foreach (BowlingPin pin in pins)
             {
-                if (!pin.IsKnockedDown)
+                // 片付けたピン(非表示)は数えない
+                if (pin.gameObject.activeSelf && !pin.IsKnockedDown)
                 {
                     standingAtStart.Add(pin);
                 }

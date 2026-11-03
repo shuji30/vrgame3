@@ -89,6 +89,20 @@ namespace VRGame3.Sports.Bowling
             }
         }
 
+        /// <summary>チャレンジ中の表示(小型スコア板に課題名と残り)。</summary>
+        public void ShowChallenge(string title, string left)
+        {
+            if (smallFrameText != null)
+            {
+                smallFrameText.text = title;
+            }
+
+            if (smallTotalText != null)
+            {
+                smallTotalText.text = left;
+            }
+        }
+
         /// <summary>大きな文字を一定時間出す。</summary>
         public void ShowMessage(string message)
         {

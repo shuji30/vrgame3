@@ -20,6 +20,9 @@ namespace VRGame3.Sports.Bowling
         [Tooltip("ボール置き台(身長と利き手に合わせて動かす)")]
         [SerializeField] private BowlingRack rack;
 
+        [Tooltip("モードの行")]
+        [SerializeField] private ModeSelector modeSelector;
+
         [Tooltip("パネル全体(表示・非表示を切り替える)")]
         [SerializeField] private GameObject panelRoot;
 
@@ -66,6 +69,7 @@ namespace VRGame3.Sports.Bowling
             if (game != null)
             {
                 game.GameFinished += OnGameFinished;
+                game.WaitingForStart += Show;
             }
 
             // メニューの設定パネルで身長・利き手を変えたときも、表示とボール置き台に反映する
@@ -81,6 +85,7 @@ namespace VRGame3.Sports.Bowling
             if (game != null)
             {
                 game.GameFinished -= OnGameFinished;
+                game.WaitingForStart -= Show;
             }
 
             SaveStore.Changed -= OnSaveChanged;
@@ -154,17 +159,28 @@ namespace VRGame3.Sports.Bowling
         /// <summary>パネルを閉じて投げ始める(ボタンから呼ぶ)。</summary>
         public void StartGame()
         {
-            if (game != null && game.IsGameOver)
-            {
-                game.NewGame();
-            }
-
             shown = false;
             panelRoot.SetActive(false);
-            if (game != null)
+            if (game == null)
             {
-                game.SetInputLocked(false);
+                return;
             }
+
+            SportMode mode = modeSelector != null ? modeSelector.Mode : SportMode.Solo;
+            if (mode == SportMode.Challenge)
+            {
+                // 課題を選ぶまでボールは掴めないまま
+                game.ShowChallengeList();
+                return;
+            }
+
+            // 毎ゲームの始めに新しいゲームにする(途中のゲームから「はじめに」を出し直したときも)
+            if (game.IsGameOver || mode != SportMode.Solo || TurnSession.Active || game.Sheet == null || game.Sheet.GetRolls(0).Count > 0)
+            {
+                game.StartSelectedMode();
+            }
+
+            game.SetInputLocked(false);
         }
 
         /// <summary>パネルを出し、閉じるまでボールを掴めないようにする。</summary>
@@ -172,6 +188,11 @@ namespace VRGame3.Sports.Bowling
         {
             shown = true;
             panelRoot.SetActive(!InputGate.GrabBlocked);
+            if (modeSelector != null)
+            {
+                modeSelector.Refresh();
+            }
+
             if (game != null)
             {
                 game.SetInputLocked(true);
